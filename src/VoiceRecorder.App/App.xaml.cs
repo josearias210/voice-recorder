@@ -20,6 +20,9 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // Hooks de Velopack: SIEMPRE primero (instalación, updates, desinstalación).
+        Velopack.VelopackApp.Build().Run();
+
         base.OnStartup(e);
 
         var dataDir = Path.Combine(
@@ -42,6 +45,9 @@ public partial class App : System.Windows.Application
         InitTray(viewModel);
         _mainWindow.Show();
         UpdateTrayState(viewModel.StateText);
+
+        // Comprobación de actualizaciones en segundo plano (5s tras arrancar).
+        _ = viewModel.CheckForUpdatesDelayedAsync();
     }
 
     private static void InitTray(MainViewModel viewModel)

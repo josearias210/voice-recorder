@@ -489,3 +489,6 @@ publish/
 artifacts/
 installer/output/
 *.user
+
+# Paquetes vpk generados en local
+releases/

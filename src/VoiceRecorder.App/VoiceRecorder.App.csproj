@@ -23,4 +23,8 @@
     <ProjectReference Include="..\VoiceRecorder.Storage\VoiceRecorder.Storage.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Velopack" Version="1.2.158" />
+  </ItemGroup>
+
 </Project>

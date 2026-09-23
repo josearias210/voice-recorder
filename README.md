@@ -25,19 +25,35 @@ Meet · Teams · Zoom · WhatsApp Web · Discord — si suena en tu PC, se trans
 - 💾 **Historial con etiquetas**: sesiones en SQLite, reabribles como vista de chat.
 - 📤 **Exportar**: TXT, Markdown y SRT (subtítulos).
 - 🖥️ **Bandeja del sistema**: control Iniciar/Pausar/Detener sin abrir la ventana.
+- 🔄 **Auto-actualización**: con deltas incrementales vía [Velopack](https://github.com/velopack/velopack).
 - 🔇 **Sin audio guardado**: por defecto solo se conserva el texto (el audio vive en memoria).
 
 ## 🚀 Instalación
 
-### Instalador (recomendado)
+### Instalador con auto-actualización (recomendado)
 
-Descarga `VoiceRecorder-Setup-<versión>.exe` desde [Releases](../../releases) y ejecútalo.
+Descarga `VoiceRecorder-win-Setup.exe` desde [Releases](../../releases/latest) y ejecútalo.
+
+La app **se actualiza sola**: al arrancar comprueba si hay una versión nueva y te ofrece *Actualizar y reiniciar* (descarga incremental, sin reinstalar).
 
 > Requiere **Windows 10 2004+ / Windows 11** (64 bits). El modelo de transcripción se descarga dentro de la app (≈60 MB).
 
+### Gestores de paquetes
+
+```powershell
+# winget (canal oficial de Windows)
+winget install Josearias210.VoiceRecorder
+
+# scoop (bucket de la comunidad del proyecto)
+scoop bucket add josearias210 https://github.com/josearias210/voice-recorder
+scoop install voice-recorder
+```
+
+> ℹ️ La app instalada por cualquier vía se auto-actualiza de la misma forma: el canal solo afecta a la primera instalación.
+
 ### Portable
 
-Descarga `VoiceRecorder-portable-<versión>.zip`, descomprime y ejecuta `VoiceRecorder.exe`.
+Descarga `VoiceRecorder-win-Portable.zip` desde [Releases](../../releases/latest), descomprime y ejecuta `VoiceRecorder.exe`.
 
 ### Desde el código fuente
 
@@ -92,12 +108,12 @@ src/VoiceRecorder.Core          · DTOs e interfaces
 src/VoiceRecorder.Audio         · Captura WASAPI dual + resampleo 16 kHz
 src/VoiceRecorder.Transcription · VAD + Whisper + orquestador de sesión
 src/VoiceRecorder.Storage       · Persistencia SQLite
-src/VoiceRecorder.App           · UI WPF (chat, historial, bandeja)
+src/VoiceRecorder.App           · UI WPF (chat, historial, bandeja, updates)
 tools/CaptureVerifier           · Verifica captura de audio (Fase 1)
 tools/PipelineVerifier          · Verificación E2E del pipeline
 tests/VoiceRecorder.Tests       · Tests unitarios
-installer/                      · Script de Inno Setup
-scripts/                        · Scripts de build/publish
+bucket/                         · Manifest de scoop (se actualiza en cada release)
+scripts/                        · Build/publish + alta en winget
 ```
 
 ## 🗺️ Roadmap
@@ -115,9 +131,23 @@ dotnet build VoiceRecorder.slnx        # compilar
 dotnet test                            # tests unitarios
 dotnet run --project tools/CaptureVerifier -- 6     # probar captura de audio
 dotnet run --project tools/PipelineVerifier -- 12 es   # E2E del pipeline (usa TTS)
-.\scripts\build.ps1                    # publish + portable zip
-.\scripts\build-installer.ps1          # instalador (requiere Inno Setup 6)
+.\scripts\build.ps1                    # publish + zip portable
+.\scripts\build.ps1 -VpkVersion 0.9.2  # + paquetes Velopack para probar updates en local
+.\scripts\publish-winget.ps1 -Version x.y.z  # alta/actualización en winget (tras release)
 ```
+
+#### Probar el flujo de actualización en local
+
+1. `.\scripts\build.ps1 -VpkVersion 0.9.1` e instala `artifacts\vpk-test\VoiceRecorder-win-Setup.exe`
+2. Genera una versión superior: `.\scripts\build.ps1 -VpkVersion 0.9.2`
+3. Lanza la app apuntando a la carpeta local de paquetes:
+
+   ```powershell
+   $env:VR_UPDATE_SOURCE = "$PWD\artifacts\vpk-test"
+   & "$env:LOCALAPPDATA\VoiceRecorder\VoiceRecorder.exe"
+   ```
+
+4. A los 5 segundos aparecerá el banner de actualización → *Actualizar y reiniciar*.
 
 Ver [CONTRIBUTING.md](CONTRIBUTING.md) para convenciones y flujo de PRs.
 

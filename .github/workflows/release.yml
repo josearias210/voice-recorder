@@ -11,11 +11,13 @@ permissions:
 
 jobs:
   release:
-    name: Build installer & publish release
+    name: Velopack installer + scoop bucket + GitHub release
     runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -30,27 +32,54 @@ jobs:
           $version = $tag -replace '^v', ''
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-      - name: Publish (self-contained win-x64)
-        run: dotnet publish src/VoiceRecorder.App/VoiceRecorder.App.csproj -c Release -r win-x64 --self-contained true -p:Version=${{ steps.version.outputs.version }} -o publish
-
-      - name: Build tests to validate
+      - name: Build
         run: dotnet build VoiceRecorder.slnx -c Release
 
       - name: Run unit tests
-        run: dotnet test tests/VoiceRecorder.Tests -c Release --no-build --filter "Category!=Manual"
+        run: dotnet test tests/VoiceRecorder.Tests -c Release --no-build --logger "console;verbosity=normal"
 
-      - name: Create portable ZIP
+      - name: Publish (self-contained win-x64)
+        run: dotnet publish src/VoiceRecorder.App/VoiceRecorder.App.csproj -c Release -r win-x64 --self-contained true -p:Version=${{ steps.version.outputs.version }} -o publish
+
+      - name: Install Velopack CLI
+        run: dotnet tool update --global vpk
+
+      - name: Pack (installer + update packages)
+        run: >
+          vpk pack
+          --packId VoiceRecorder
+          --packVersion ${{ steps.version.outputs.version }}
+          --packDir publish
+          --mainExe VoiceRecorder.exe
+          --packAuthors josearias210
+          --icon src/VoiceRecorder.App/Assets/app.ico
+          --releaseNotes "Voice Recorder ${{ steps.version.outputs.version }}"
+          --outputDir releases
+
+      - name: Update scoop bucket manifest
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path installer/output | Out-Null
-          Compress-Archive -Path "publish/*" -DestinationPath "installer/output/VoiceRecorder-portable-${{ steps.version.outputs.version }}.zip" -Force
-
-      - name: Install Inno Setup
-        run: choco install innosetup -y --no-progress
-
-      - name: Build installer
-        shell: cmd
-        run: '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=${{ steps.version.outputs.version }} installer\VoiceRecorder.iss'
+          $version = "${{ steps.version.outputs.version }}"
+          $zip = "releases/VoiceRecorder-win-Portable.zip"
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          $manifest = [ordered]@{
+            version     = $version
+            description = "Transcriptor local de llamadas en tiempo real para Windows (Whisper + Silero VAD)."
+            homepage    = "https://github.com/josearias210/voice-recorder"
+            license     = "MIT"
+            url         = "https://github.com/josearias210/voice-recorder/releases/download/v$version/VoiceRecorder-win-Portable.zip"
+            hash        = $hash
+            bin         = "VoiceRecorder.exe"
+            shortcuts   = @(@("VoiceRecorder.exe", "Voice Recorder"))
+            notes       = "La app se auto-actualiza a traves de Velopack al arrancar."
+          }
+          $manifest | ConvertTo-Json -Depth 5 | Set-Content -Path bucket/voice-recorder.json -Encoding UTF8
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bucket/voice-recorder.json
+          $stamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+          git commit -m "chore(scoop): release v$version [$stamp]" 2>$null
+          git push origin main
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -59,13 +88,19 @@ jobs:
           body: |
             ## Voice Recorder ${{ steps.version.outputs.version }}
 
-            - **Instalador**: `VoiceRecorder-Setup-${{ steps.version.outputs.version }}.exe` (recomendado)
-            - **Portable**: `VoiceRecorder-portable-${{ steps.version.outputs.version }}.zip`
+            ### Instalación
+            - **Instalador**: `VoiceRecorder-win-Setup.exe` — con auto-actualización integrada (recomendado)
+            - **winget**: `winget install Josearias210.VoiceRecorder` *(si el manifest ya fue aprobado)*
+            - **scoop**: `scoop bucket add josearias210 https://github.com/josearias210/voice-recorder` → `scoop install voice-recorder`
+            - **Portable**: `VoiceRecorder-win-Portable.zip`
 
             Requiere Windows 10 2004+ / Windows 11 (64 bits).
             El modelo de transcripción se descarga dentro de la app (~60 MB).
           files: |
-            installer/output/VoiceRecorder-Setup-${{ steps.version.outputs.version }}.exe
-            installer/output/VoiceRecorder-portable-${{ steps.version.outputs.version }}.zip
-          draft: true
+            releases/VoiceRecorder-win-Setup.exe
+            releases/VoiceRecorder-win-Portable.zip
+            releases/RELEASES
+            releases/releases.win.json
+            releases/assets.win.json
+          draft: false
           prerelease: false

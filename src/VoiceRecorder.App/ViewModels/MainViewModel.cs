@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 using VoiceRecorder.App.Infrastructure;
+using VoiceRecorder.App.Services;
 using VoiceRecorder.Audio;
 using VoiceRecorder.Core;
 using VoiceRecorder.Transcription;
@@ -22,6 +23,7 @@ public sealed class MainViewModel : ViewModelBase
     private readonly ISessionStore _store;
     private readonly ModelManager _models;
     private readonly IAudioDeviceEnumerator _devices;
+    private readonly UpdateService _updates = new();
     private readonly SynchronizationContext _ui;
     private readonly DispatcherTimer _timer;
 
@@ -55,6 +57,7 @@ public sealed class MainViewModel : ViewModelBase
         PauseResumeCommand = new RelayCommand(_ => TogglePause(), _ => CanPauseResume);
         StopCommand = new AsyncRelayCommand(_ => StopSessionAsync(), _ => CanStop);
         DownloadModelCommand = new AsyncRelayCommand(_ => DownloadModelAsync(), _ => CanDownloadModel);
+        UpdateNowCommand = new AsyncRelayCommand(_ => UpdateNowAsync(), _ => UpdateAvailable);
         SearchCommand = new RelayCommand(_ => LoadHistory(SearchText));
     }
 
@@ -70,7 +73,7 @@ public sealed class MainViewModel : ViewModelBase
 
     public ObservableCollection<SessionRowVm> History { get; } = [];
 
-    private WhisperModelInfo _selectedModel;
+    private WhisperModelInfo _selectedModel = null!;
 
     public WhisperModelInfo SelectedModel
     {
@@ -105,6 +108,30 @@ public sealed class MainViewModel : ViewModelBase
     public AsyncRelayCommand StopCommand { get; }
 
     public AsyncRelayCommand DownloadModelCommand { get; }
+
+    public AsyncRelayCommand UpdateNowCommand { get; }
+
+    private bool _updateAvailable;
+
+    public bool UpdateAvailable
+    {
+        get => _updateAvailable;
+        private set
+        {
+            if (Set(ref _updateAvailable, value))
+            {
+                CommandManager.InvalidateRequerySuggested();
+            }
+        }
+    }
+
+    private string _updateVersion = string.Empty;
+
+    public string UpdateVersion
+    {
+        get => _updateVersion;
+        private set => Set(ref _updateVersion, value);
+    }
 
     public SessionState State
     {
@@ -358,6 +385,51 @@ public sealed class MainViewModel : ViewModelBase
         {
             await StopSessionAsync();
         }
+    }
+
+    /// <summary>Comprueba si hay actualizaciones y muestra el banner si las hay.</summary>
+    public async Task CheckForUpdatesDelayedAsync()
+    {
+        try
+        {
+            await Task.Delay(5000);
+            if (!_updates.IsSupported)
+            {
+                return;
+            }
+
+            var info = await _updates.CheckAsync();
+            var version = info?.TargetFullRelease?.Version?.ToString();
+            if (!string.IsNullOrEmpty(version))
+            {
+                UpdateVersion = version!;
+                UpdateAvailable = true;
+                StatusText = $"Actualización a v{version} disponible.";
+            }
+        }
+        catch
+        {
+            // Sin red o fuente inaccesible: se ignora silenciosamente.
+        }
+    }
+
+    private async Task UpdateNowAsync()
+    {
+        var info = await _updates.CheckAsync();
+        if (info?.TargetFullRelease is null)
+        {
+            UpdateAvailable = false;
+            return;
+        }
+
+        StatusText = "Descargando actualización…";
+        DownloadPercent = 0;
+        await _updates.DownloadAsync(
+            info,
+            p => _ui.Post(_ => DownloadPercent = p, null),
+            CancellationToken.None);
+        StatusText = $"Actualización v{info.TargetFullRelease.Version} lista. Reiniciando…";
+        _updates.ApplyAndRestart(info);
     }
 
     private void OnSegmentReady(TranscriptSegment segment)

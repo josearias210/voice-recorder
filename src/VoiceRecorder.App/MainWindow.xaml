@@ -9,13 +9,27 @@
     <Grid Margin="14">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
+        <!-- Banner de actualización -->
+        <Border Grid.Row="0" Background="{StaticResource AccentBrush}" CornerRadius="10" Padding="14,8"
+                Margin="0,0,0,10" Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolToVis}}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Foreground="White" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="13">
+                    <Run Text="🔄 Nueva versión " /><Run Text="{Binding UpdateVersion, Mode=OneWay}" /><Run Text=" disponible" />
+                </TextBlock>
+                <Button Content="Actualizar y reiniciar" Margin="14,0,0,0" Padding="10,5"
+                        Background="White" Foreground="{StaticResource AccentBrush}"
+                        Command="{Binding UpdateNowCommand}" />
+            </StackPanel>
+        </Border>
+
         <!-- Barra de control de sesión -->
-        <Border Grid.Row="0" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource BorderBrush}"
+        <Border Grid.Row="1" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource BorderBrush}"
                 BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,0,0,10">
             <StackPanel Orientation="Horizontal">
                 <Button Content="▶ Iniciar" Command="{Binding StartCommand}" MinWidth="96" FontWeight="SemiBold" />
@@ -31,7 +45,7 @@
         </Border>
 
         <!-- Zona principal: chat vivo + historial -->
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="360" />
@@ -120,7 +134,7 @@
         </Grid>
 
         <!-- Ajustes -->
-        <Border Grid.Row="2" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource BorderBrush}"
+        <Border Grid.Row="3" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource BorderBrush}"
                 BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,10,0,0">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Modelo:" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" />
@@ -137,7 +151,7 @@
         </Border>
 
         <!-- Estado -->
-        <StackPanel Grid.Row="3" Margin="4,8,4,0">
+        <StackPanel Grid.Row="4" Margin="4,8,4,0">
             <ProgressBar Height="4" Minimum="0" Maximum="1" IsIndeterminate="{Binding DownloadVisible}"
                          Visibility="{Binding DownloadVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,4" />
             <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource MutedBrush}" FontSize="12" />

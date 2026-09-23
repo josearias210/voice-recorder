@@ -1,0 +1,16 @@
+{
+  "version": "1.1.0",
+  "description": "Transcriptor local de llamadas en tiempo real para Windows (Whisper + Silero VAD).",
+  "homepage": "https://github.com/josearias210/voice-recorder",
+  "license": "MIT",
+  "url": "https://github.com/josearias210/voice-recorder/releases/download/v1.1.0/VoiceRecorder-win-Portable.zip",
+  "hash": "PENDING-CI",
+  "bin": "VoiceRecorder.exe",
+  "shortcuts": [
+    [
+      "VoiceRecorder.exe",
+      "Voice Recorder"
+    ]
+  ],
+  "notes": "La app se auto-actualiza a través de Velopack al arrancar."
+}
