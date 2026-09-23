@@ -1,0 +1,19 @@
+PackageIdentifier: Josearias210.VoiceRecorder
+PackageVersion: 1.1.0
+MinimumOSVersion: 10.0.19041.0
+InstallerType: exe
+Scope: user
+InstallModes:
+  - silent
+  - silentWithProgress
+UpgradeBehavior: install
+ReleaseDate: 2026-09-23
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/josearias210/voice-recorder/releases/download/v1.1.0/VoiceRecorder-win-Setup.exe
+    InstallerSha256: 49662a4eb1aa7c9a98569221e864f9ea43010b1e485a408345ce353e455d2b81
+    InstallerSwitches:
+      Silent: --silent
+      SilentWithProgress: --silent
+ManifestType: installer
+ManifestVersion: 1.6.0

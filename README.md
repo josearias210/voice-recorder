@@ -113,6 +113,7 @@ tools/CaptureVerifier           · Verifica captura de audio (Fase 1)
 tools/PipelineVerifier          · Verificación E2E del pipeline
 tests/VoiceRecorder.Tests       · Tests unitarios
 bucket/                         · Manifest de scoop (se actualiza en cada release)
+winget/                         · Manifests de winget (validados con winget validate)
 scripts/                        · Build/publish + alta en winget
 ```
 
