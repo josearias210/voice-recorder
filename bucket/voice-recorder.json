@@ -4,13 +4,11 @@
   "homepage": "https://github.com/josearias210/voice-recorder",
   "license": "MIT",
   "url": "https://github.com/josearias210/voice-recorder/releases/download/v1.1.0/VoiceRecorder-win-Portable.zip",
-  "hash": "PENDING-CI",
+  "hash": "9e35b9f169f574bc6fcd9e0593074d57cf537a1acb95f6c2f171d37154604e74",
   "bin": "VoiceRecorder.exe",
   "shortcuts": [
-    [
-      "VoiceRecorder.exe",
-      "Voice Recorder"
-    ]
+    "VoiceRecorder.exe",
+    "Voice Recorder"
   ],
-  "notes": "La app se auto-actualiza a través de Velopack al arrancar."
+  "notes": "La app se auto-actualiza a traves de Velopack al arrancar."
 }
