@@ -78,7 +78,7 @@ jobs:
           git add bucket/voice-recorder.json
           $stamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
           git commit -m "chore(scoop): release v$version [$stamp]" 2>$null
-          git push origin main
+          git push origin HEAD:main
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -103,4 +103,5 @@ jobs:
             releases/assets.win.json
           draft: false
           prerelease: false
+
 
