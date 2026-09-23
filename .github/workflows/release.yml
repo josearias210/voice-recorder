@@ -53,7 +53,6 @@ jobs:
           --mainExe VoiceRecorder.exe
           --packAuthors josearias210
           --icon src/VoiceRecorder.App/Assets/app.ico
-          --releaseNotes "Voice Recorder ${{ steps.version.outputs.version }}"
           --outputDir releases
 
       - name: Update scoop bucket manifest
@@ -104,3 +103,4 @@ jobs:
             releases/assets.win.json
           draft: false
           prerelease: false
+
