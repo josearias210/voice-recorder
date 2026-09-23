@@ -1,0 +1,66 @@
+<Window x:Class="VoiceRecorder.App.ChatWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Height="640" Width="760" MinHeight="420" MinWidth="560"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource WindowBackground}">
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Cabecera con metadatos editables -->
+        <Border Grid.Row="0" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Título:" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" />
+                <TextBox Grid.Column="1" Text="{Binding SessionTitle, UpdateSourceTrigger=PropertyChanged}" Margin="6,0,14,0" />
+                <TextBlock Grid.Column="2" Text="Etiquetas:" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" />
+                <TextBox Grid.Column="3" Text="{Binding SessionTags, UpdateSourceTrigger=PropertyChanged}" Margin="6,0,14,0" />
+                <Button Grid.Column="4" Content="Guardar" Style="{StaticResource SecondaryButton}" Click="Save_Click" />
+            </Grid>
+        </Border>
+
+        <!-- Chat -->
+        <Border Grid.Row="1" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1" CornerRadius="10" Padding="6">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Segments}" Margin="4,4,4,8">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource BubbleBorder}">
+                                <StackPanel>
+                                    <TextBlock FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2">
+                                        <Run Text="{Binding SpeakerLabel, Mode=OneWay}" FontWeight="SemiBold" />
+                                        <Run Text="{Binding TimeText, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="14"
+                                               Foreground="{StaticResource TextBrush}" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Acciones -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="4,10,4,0">
+            <Button Content="Exportar TXT" Style="{StaticResource SecondaryButton}" Click="ExportTxt_Click" />
+            <Button Content="Exportar Markdown" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="ExportMd_Click" />
+            <Button Content="Exportar SRT" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="ExportSrt_Click" />
+            <Button Content="Eliminar sesión" Style="{StaticResource DangerButton}" Margin="18,0,0,0" Click="Delete_Click" />
+            <Button Content="Cerrar" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="Close_Click" />
+        </StackPanel>
+    </Grid>
+</Window>
+

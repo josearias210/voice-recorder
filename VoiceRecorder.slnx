@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/VoiceRecorder.App/VoiceRecorder.App.csproj" />
+    <Project Path="src/VoiceRecorder.Audio/VoiceRecorder.Audio.csproj" />
+    <Project Path="src/VoiceRecorder.Core/VoiceRecorder.Core.csproj" />
+    <Project Path="src/VoiceRecorder.Storage/VoiceRecorder.Storage.csproj" />
+    <Project Path="src/VoiceRecorder.Transcription/VoiceRecorder.Transcription.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VoiceRecorder.Tests/VoiceRecorder.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/CaptureVerifier/CaptureVerifier.csproj" />
+    <Project Path="tools/PipelineVerifier/PipelineVerifier.csproj" />
+  </Folder>
+</Solution>

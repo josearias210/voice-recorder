@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <AssemblyName>VoiceRecorder</AssemblyName>
+    <RootNamespace>VoiceRecorder.App</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\app.ico" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VoiceRecorder.Core\VoiceRecorder.Core.csproj" />
+    <ProjectReference Include="..\VoiceRecorder.Audio\VoiceRecorder.Audio.csproj" />
+    <ProjectReference Include="..\VoiceRecorder.Transcription\VoiceRecorder.Transcription.csproj" />
+    <ProjectReference Include="..\VoiceRecorder.Storage\VoiceRecorder.Storage.csproj" />
+  </ItemGroup>
+
+</Project>

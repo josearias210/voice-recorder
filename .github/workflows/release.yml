@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build installer & publish release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Extract version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag -replace '^v', ''
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Publish (self-contained win-x64)
+        run: dotnet publish src/VoiceRecorder.App/VoiceRecorder.App.csproj -c Release -r win-x64 --self-contained true -p:Version=${{ steps.version.outputs.version }} -o publish
+
+      - name: Build tests to validate
+        run: dotnet build VoiceRecorder.slnx -c Release
+
+      - name: Run unit tests
+        run: dotnet test tests/VoiceRecorder.Tests -c Release --no-build --filter "Category!=Manual"
+
+      - name: Create portable ZIP
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path installer/output | Out-Null
+          Compress-Archive -Path "publish/*" -DestinationPath "installer/output/VoiceRecorder-portable-${{ steps.version.outputs.version }}.zip" -Force
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        shell: cmd
+        run: '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=${{ steps.version.outputs.version }} installer\VoiceRecorder.iss'
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Voice Recorder ${{ steps.version.outputs.version }}
+          body: |
+            ## Voice Recorder ${{ steps.version.outputs.version }}
+
+            - **Instalador**: `VoiceRecorder-Setup-${{ steps.version.outputs.version }}.exe` (recomendado)
+            - **Portable**: `VoiceRecorder-portable-${{ steps.version.outputs.version }}.zip`
+
+            Requiere Windows 10 2004+ / Windows 11 (64 bits).
+            El modelo de transcripción se descarga dentro de la app (~60 MB).
+          files: |
+            installer/output/VoiceRecorder-Setup-${{ steps.version.outputs.version }}.exe
+            installer/output/VoiceRecorder-portable-${{ steps.version.outputs.version }}.zip
+          draft: true
+          prerelease: false

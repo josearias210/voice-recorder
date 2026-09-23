@@ -1,0 +1,15 @@
+<Project>
+
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <Authors>josearias210</Authors>
+    <Product>Voice Recorder</Product>
+    <Company>Voice Recorder contributors</Company>
+    <RepositoryUrl>https://github.com/josearias210/voice-recorder</RepositoryUrl>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <Deterministic>true</Deterministic>
+    <NeutralLanguage>es</NeutralLanguage>
+  </PropertyGroup>
+
+</Project>

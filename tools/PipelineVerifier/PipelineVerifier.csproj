@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\VoiceRecorder.Core\VoiceRecorder.Core.csproj" />
+    <ProjectReference Include="..\..\src\VoiceRecorder.Audio\VoiceRecorder.Audio.csproj" />
+    <ProjectReference Include="..\..\src\VoiceRecorder.Transcription\VoiceRecorder.Transcription.csproj" />
+    <ProjectReference Include="..\..\src\VoiceRecorder.Storage\VoiceRecorder.Storage.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Speech" Version="10.0.12" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
