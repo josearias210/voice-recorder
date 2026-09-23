@@ -96,11 +96,8 @@ jobs:
             Requiere Windows 10 2004+ / Windows 11 (64 bits).
             El modelo de transcripción se descarga dentro de la app (~60 MB).
           files: |
-            releases/VoiceRecorder-win-Setup.exe
-            releases/VoiceRecorder-win-Portable.zip
-            releases/RELEASES
-            releases/releases.win.json
-            releases/assets.win.json
+            releases/*
+          overwrite_files: true
           draft: false
           prerelease: false
 
