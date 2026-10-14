@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\VoiceRecorder.Core\VoiceRecorder.Core.csproj" />
+    <ProjectReference Include="..\..\src\VoiceRecorder.Audio\VoiceRecorder.Audio.csproj" />
     <ProjectReference Include="..\..\src\VoiceRecorder.Transcription\VoiceRecorder.Transcription.csproj" />
     <ProjectReference Include="..\..\src\VoiceRecorder.Storage\VoiceRecorder.Storage.csproj" />
     <ProjectReference Include="..\..\src\VoiceRecorder.App\VoiceRecorder.App.csproj" />

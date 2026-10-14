@@ -30,6 +30,14 @@ public sealed class SegmentVm
         Speaker.Me => "Yo",
         Speaker.Them => "Ellos",
         Speaker.Both => "Ambos",
-        _ => "???",
+        _ => "Audio",
+    };
+
+    /// <summary>Inicial para el avatar circular de la burbuja.</summary>
+    public string AvatarText => Speaker switch
+    {
+        Speaker.Me => "Y",
+        Speaker.Them => "E",
+        _ => "A",
     };
 }

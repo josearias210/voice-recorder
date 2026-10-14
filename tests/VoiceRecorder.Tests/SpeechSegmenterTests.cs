@@ -96,4 +96,46 @@ public class SpeechSegmenterTests
         Assert.InRange(emitted.End.TotalSeconds, 10.0, 12);
         Assert.True(emitted.End > emitted.Start);
     }
+
+    [Fact]
+    public void Feed_Incluye_PreRoll_De_Silencio_Antes_Del_Inicio_De_La_Voz()
+    {
+        // 20 ventanas de silencio + 8 de voz + 25 de silencio (cierra el enunciado)
+        var probabilities = Enumerable.Repeat(0.01f, 20)
+            .Concat(Enumerable.Repeat(0.9f, 8))
+            .Concat(Enumerable.Repeat(0.05f, 25))
+            .ToArray();
+        using var segmenter = new SpeechSegmenter(new FakeVad(probabilities), Speaker.Me);
+
+        Utterance? emitted = null;
+        segmenter.UtteranceCompleted += u => emitted = u;
+
+        segmenter.Feed(Audio(53), TimeSpan.Zero);
+
+        Assert.NotNull(emitted);
+        // La voz empieza en la ventana 20 (~640ms) pero el buffer emitido arranca
+        // antes: el pre-roll de silencio debe incluirse para no cortar el arranque.
+        Assert.True(emitted!.Samples.Length >= 16000, $"samples={emitted.Samples.Length}");
+        Assert.InRange(emitted.Start.TotalMilliseconds, 600, 700);
+    }
+
+    [Fact]
+    public void Reset_Tras_Flush_Deja_El_Segmenter_Listo_Para_Nuevos_Enunciados()
+    {
+        var probabilities = Enumerable.Repeat(0.9f, 8).Concat(Enumerable.Repeat(0.05f, 25)).ToArray();
+        using var segmenter = new SpeechSegmenter(new FakeVad(probabilities), Speaker.Me);
+
+        var emitted = new List<Utterance>();
+        segmenter.UtteranceCompleted += emitted.Add;
+
+        segmenter.Feed(Audio(33), TimeSpan.Zero);
+        segmenter.Reset();
+
+        // Tras reiniciar (caso Reanudar tras pausa), una nueva racha de voz
+        // vuelve a emitir sin arrastrar estado ni timestamps anteriores.
+        segmenter.Feed(Audio(33), TimeSpan.FromSeconds(60));
+
+        Assert.Equal(2, emitted.Count);
+        Assert.InRange(emitted[1].Start.TotalSeconds, 59.9, 60.2);
+    }
 }

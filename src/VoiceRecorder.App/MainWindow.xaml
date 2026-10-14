@@ -4,8 +4,42 @@
         Title="Voice Recorder · Transcriptor de llamadas"
         Height="720" Width="1180" MinHeight="560" MinWidth="940"
         WindowStartupLocation="CenterScreen"
-        Background="{StaticResource WindowBackground}"
+        AllowDrop="True" DragOver="Window_DragOver" Drop="Window_Drop"
+        Background="{DynamicResource WindowBackground}"
         Icon="Assets/app.ico">
+    <Window.Resources>
+        <!-- Punto de estado: rojo pulsante al grabar, ámbar en pausa -->
+        <Style x:Key="LiveDot" TargetType="Ellipse">
+            <Setter Property="Width" Value="10" />
+            <Setter Property="Height" Value="10" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Fill" Value="{DynamicResource MutedBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding State}" Value="Recording">
+                    <Setter Property="Fill" Value="{DynamicResource DangerBrush}" />
+                    <DataTrigger.EnterActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1" To="0.15"
+                                                 Duration="0:0:0.7" AutoReverse="True" RepeatBehavior="Forever" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </DataTrigger.EnterActions>
+                    <DataTrigger.ExitActions>
+                        <BeginStoryboard>
+                            <Storyboard>
+                                <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1"
+                                                 Duration="0:0:0.2" FillBehavior="Stop" />
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </DataTrigger.ExitActions>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding State}" Value="Paused">
+                    <Setter Property="Fill" Value="#F59E0B" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
     <Grid Margin="14">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -16,29 +50,61 @@
         </Grid.RowDefinitions>
 
         <!-- Banner de actualización -->
-        <Border Grid.Row="0" Background="{StaticResource AccentBrush}" CornerRadius="10" Padding="14,8"
+        <Border Grid.Row="0" Background="{DynamicResource AccentBrush}" CornerRadius="10" Padding="14,8"
                 Margin="0,0,0,10" Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolToVis}}">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Foreground="White" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="13">
                     <Run Text="🔄 Nueva versión " /><Run Text="{Binding UpdateVersion, Mode=OneWay}" /><Run Text=" disponible" />
                 </TextBlock>
                 <Button Content="Actualizar y reiniciar" Margin="14,0,0,0" Padding="10,5"
-                        Background="White" Foreground="{StaticResource AccentBrush}"
+                        Background="White" Foreground="{DynamicResource AccentBrush}"
                         Command="{Binding UpdateNowCommand}" />
             </StackPanel>
         </Border>
 
         <!-- Barra de control de sesión -->
-        <Border Grid.Row="1" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource BorderBrush}"
-                BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,0,0,10">
+        <Border Grid.Row="1" BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,0,0,10">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Background" Value="{DynamicResource PanelBackground}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding State}" Value="Recording">
+                            <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding State}" Value="Paused">
+                            <Setter Property="BorderBrush" Value="#F59E0B" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
             <StackPanel Orientation="Horizontal">
                 <Button Content="▶ Iniciar" Command="{Binding StartCommand}" MinWidth="96" FontWeight="SemiBold" />
                 <Button Content="{Binding PauseButtonText}" Command="{Binding PauseResumeCommand}" MinWidth="96"
                         Margin="8,0,0,0" Style="{StaticResource SecondaryButton}" />
                 <Button Content="■ Detener" Command="{Binding StopCommand}" MinWidth="96" Margin="8,0,0,0"
                         Style="{StaticResource DangerButton}" />
-                <TextBlock Text="{Binding StateText}" FontWeight="Bold" FontSize="14" VerticalAlignment="Center"
-                           Margin="22,0,0,0" Foreground="{StaticResource AccentBrush}" />
+                <Button Content="Transcribir archivo…" Command="{Binding TranscribeFileCommand}" MinWidth="150"
+                        Margin="22,0,0,0" Style="{StaticResource SecondaryButton}" />
+                <CheckBox Content="Grabar audio y transcribir al detener" IsChecked="{Binding RecordAudioFirst}"
+                          IsEnabled="{Binding CanStart}" Margin="22,0,0,0" VerticalAlignment="Center"
+                          ToolTip="Modo sin transcripción en vivo: guarda el audio (micrófono y llamada por separado) en WAV y lo transcribe al pulsar Detener. El arranque es instantáneo y el texto llega al final. El audio se conserva en %LOCALAPPDATA%\VoiceRecorder\audio." />
+                <Ellipse Style="{StaticResource LiveDot}" Margin="24,0,7,0" />
+                <TextBlock Text="{Binding StateText}" FontWeight="Bold" FontSize="14" VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding State}" Value="Recording">
+                                    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding State}" Value="Paused">
+                                    <Setter Property="Foreground" Value="#F59E0B" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
                 <TextBlock Text="{Binding ElapsedText}" FontSize="16" VerticalAlignment="Center" Margin="12,0,0,0"
                            FontFamily="Consolas" />
             </StackPanel>
@@ -52,38 +118,81 @@
             </Grid.ColumnDefinitions>
 
             <!-- Transcripción en vivo -->
-            <Border Grid.Column="0" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource BorderBrush}"
+            <Border Grid.Column="0" Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1" CornerRadius="10" Padding="6">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="Transcripción en vivo" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}"
-                               Margin="12,8,12,4" />
+                    <Grid Grid.Row="0" Margin="12,8,12,4">
+                        <TextBlock Text="Transcripción" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding State}" Value="Recording">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding State}" Value="Paused">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <Ellipse Style="{StaticResource LiveDot}" Margin="0,0,6,0" />
+                            <TextBlock FontSize="11" FontWeight="Bold">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="EN VIVO" />
+                                        <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding State}" Value="Paused">
+                                                <Setter Property="Text" Value="EN PAUSA" />
+                                                <Setter Property="Foreground" Value="#F59E0B" />
+                                            </DataTrigger>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding RecordAudioFirst}" Value="True" />
+                                                    <Condition Binding="{Binding State}" Value="Recording" />
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Text" Value="GRABANDO AUDIO" />
+                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Grid>
                     <ScrollViewer x:Name="ChatScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding Segments}" Margin="4,0,4,8">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Style="{StaticResource BubbleBorder}">
-                                        <StackPanel>
-                                            <TextBlock FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2">
-                                                <Run Text="{Binding SpeakerLabel, Mode=OneWay}" FontWeight="SemiBold" />
-                                                <Run Text="{Binding TimeText, Mode=OneWay}" />
-                                            </TextBlock>
-                                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="14"
-                                                       Foreground="{StaticResource TextBrush}" />
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <ItemsControl ItemsSource="{Binding Segments}" ItemTemplate="{StaticResource ChatBubbleTemplate}"
+                                      Margin="4,0,4,8" />
                     </ScrollViewer>
+                    <TextBlock Grid.Row="1" Text="Modo «grabar audio primero»: el texto aparecerá al pulsar Detener.&#x0a;El audio se guarda por canal (micrófono y llamada) y se conserva en disco."
+                               TextWrapping="Wrap" TextAlignment="Center" Margin="24,0,24,0"
+                               VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding RecordAudioFirst}" Value="True" />
+                                            <Condition Binding="{Binding State}" Value="Recording" />
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </MultiDataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                 </Grid>
             </Border>
 
             <!-- Historial -->
-            <Border Grid.Column="1" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource BorderBrush}"
+            <Border Grid.Column="1" Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1" CornerRadius="10" Padding="12" Margin="10,0,0,0">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -93,7 +202,7 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <TextBlock Grid.Row="0" Text="Historial de sesiones" FontWeight="SemiBold"
-                               Foreground="{StaticResource MutedBrush}" Margin="0,0,0,8" />
+                               Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,8" />
                     <DockPanel Grid.Row="1" Margin="0,0,0,8">
                         <Button DockPanel.Dock="Right" Content="Buscar" Command="{Binding SearchCommand}"
                                 Style="{StaticResource SecondaryButton}" Margin="6,0,0,0" />
@@ -105,18 +214,18 @@
                              HorizontalContentAlignment="Stretch" MouseDoubleClick="HistoryList_MouseDoubleClick">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="4,8">
+                                <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="4,8">
                                     <StackPanel>
                                         <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14"
-                                                   Foreground="{StaticResource TextBrush}" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0">
+                                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0">
                                             <Run Text="{Binding StartedAtText, Mode=OneWay}" />
                                             ·
                                             <Run Text="{Binding DurationText, Mode=OneWay}" />
                                             ·
                                             <Run Text="{Binding SegmentCountText, Mode=OneWay}" />
                                         </TextBlock>
-                                        <TextBlock FontSize="12" Foreground="{StaticResource AccentBrush}" Margin="0,2,0,0"
+                                        <TextBlock FontSize="12" Foreground="{DynamicResource AccentBrush}" Margin="0,2,0,0"
                                                    TextTrimming="CharacterEllipsis">
                                             <Run Text="🏷 " /><Run Text="{Binding TagsText, Mode=OneWay}" />
                                         </TextBlock>
@@ -134,28 +243,50 @@
         </Grid>
 
         <!-- Ajustes -->
-        <Border Grid.Row="3" Background="{StaticResource PanelBackground}" BorderBrush="{StaticResource BorderBrush}"
+        <Border Grid.Row="3" Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,10,0,0">
             <StackPanel Orientation="Horizontal">
-                <TextBlock Text="Modelo:" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" />
+                <TextBlock Text="Modelo:" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" />
                 <ComboBox ItemsSource="{Binding ModelOptions}" SelectedItem="{Binding SelectedModel}" DisplayMemberPath="DisplayName"
                           MinWidth="170" Margin="8,0,4,0" VerticalContentAlignment="Center" SelectionChanged="Model_SelectionChanged" />
-                <Button Content="Descargar" Command="{Binding DownloadModelCommand}" Style="{StaticResource SecondaryButton}" />
-                <TextBlock Text="Idioma:" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" Margin="18,0,0,0" />
-                <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedValuePath="Code" SelectedValue="{Binding SelectedLanguage.Code}"
+                <Button Content="{Binding DownloadButtonText}" Command="{Binding DownloadModelCommand}"
+                        Style="{StaticResource SecondaryButton}" MinWidth="110"
+                        ToolTip="Descarga el modelo seleccionado a tu PC (una sola vez; después funciona sin internet)" />
+                <TextBlock Text="Idioma:" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="18,0,0,0" />
+                <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedValuePath="Code" SelectedValue="{Binding SelectedLanguageCode}"
                           DisplayMemberPath="Name" MinWidth="150" Margin="8,0,0,0" VerticalContentAlignment="Center" />
-                <TextBlock Text="Micrófono:" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" Margin="18,0,0,0" />
+                <TextBlock Text="Micrófono:" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="18,0,0,0" />
                 <ComboBox ItemsSource="{Binding MicrophoneOptions}" SelectedItem="{Binding SelectedMicrophone}"
                           DisplayMemberPath="Name" MinWidth="230" MaxWidth="280" Margin="8,0,0,0" VerticalContentAlignment="Center" />
+                <TextBlock Text="Tema:" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="18,0,0,0" />
+                <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedValue="{Binding SelectedTheme}" SelectedValuePath="Theme"
+                          DisplayMemberPath="Name" MinWidth="110" Margin="8,0,0,0" VerticalContentAlignment="Center" />
             </StackPanel>
         </Border>
 
         <!-- Estado -->
-        <StackPanel Grid.Row="4" Margin="4,8,4,0">
-            <ProgressBar Height="4" Minimum="0" Maximum="1" IsIndeterminate="{Binding DownloadVisible}"
-                         Visibility="{Binding DownloadVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,4" />
-            <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource MutedBrush}" FontSize="12" />
-        </StackPanel>
+        <DockPanel Grid.Row="4" Margin="4,8,4,0">
+            <Button DockPanel.Dock="Right" Content="Cancelar" Command="{Binding CancelImportCommand}"
+                    Style="{StaticResource SecondaryButton}" Padding="12,4" Margin="12,0,0,0"
+                    VerticalAlignment="Center"
+                    Visibility="{Binding IsImporting, Converter={StaticResource BoolToVis}}" />
+            <StackPanel>
+                <ProgressBar Height="4" Minimum="0" Maximum="1" Value="{Binding DownloadPercent, Mode=OneWay}"
+                             Visibility="{Binding DownloadVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,4" />
+                <TextBlock Text="{Binding StatusText}" FontSize="12">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding State}" Value="Recording">
+                                    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+        </DockPanel>
     </Grid>
 </Window>
 

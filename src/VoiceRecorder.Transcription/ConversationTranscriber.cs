@@ -9,10 +9,14 @@ namespace VoiceRecorder.Transcription;
 /// Orquesta captura dual + VAD + transcripción con máquina de estados de sesión
 /// (Grabando ⇄ Pausada → Detenida). Los timestamps de los segmentos usan tiempo
 /// activo, excluyendo las pausas.
+/// Con motor nulo no se transcribe en vivo: solo captura (los bloques se
+/// exponen por <see cref="AudioTapped"/> para volcarlos a archivo).
 /// </summary>
 public sealed class ConversationTranscriber : IDisposable
 {
-    private readonly ITranscriptionEngine _engine;
+    private const int CaptureCount = 2;
+
+    private readonly ITranscriptionEngine? _engine;
     private readonly Func<IVad> _vadFactory;
     private readonly IAudioCaptureService _microphone;
     private readonly IAudioCaptureService _loopback;
@@ -26,18 +30,20 @@ public sealed class ConversationTranscriber : IDisposable
     private SpeechSegmenter? _loopSegmenter;
     private Task? _consumer;
     private CancellationTokenSource? _consumerCts;
+    private TaskCompletionSource _capturesStopped = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private int _stoppedCaptures;
     private TimeSpan _pausedAccum;
     private TimeSpan? _pauseStart;
     private SessionState _state = SessionState.Idle;
     private long _pendingUtterances;
 
     public ConversationTranscriber(
-        ITranscriptionEngine engine,
+        ITranscriptionEngine? engine,
         Func<IVad> vadFactory,
         IAudioCaptureService microphone,
         IAudioCaptureService loopback)
     {
-        _engine = engine ?? throw new ArgumentNullException(nameof(engine));
+        _engine = engine;
         _vadFactory = vadFactory ?? throw new ArgumentNullException(nameof(vadFactory));
         _microphone = microphone ?? throw new ArgumentNullException(nameof(microphone));
         _loopback = loopback ?? throw new ArgumentNullException(nameof(loopback));
@@ -70,6 +76,9 @@ public sealed class ConversationTranscriber : IDisposable
 
     public event Action<Exception>? ErrorOccurred;
 
+    /// <summary>Bloque de audio crudo capturado (para volcarlo a archivo). Hilo de captura.</summary>
+    public event Action<AudioChunk>? AudioTapped;
+
     /// <summary>Canal opcional de diagnóstico (hilos de fondo).</summary>
     public Action<string>? Trace;
 
@@ -80,13 +89,16 @@ public sealed class ConversationTranscriber : IDisposable
             return;
         }
 
-        _micSegmenter = CreateSegmenter(Speaker.Me);
-        _loopSegmenter = CreateSegmenter(Speaker.Them);
-        _microphone.AudioChunkReady += OnChunk;
-        _loopback.AudioChunkReady += OnChunk;
+        if (_engine is not null)
+        {
+            _micSegmenter = CreateSegmenter(Speaker.Me);
+            _loopSegmenter = CreateSegmenter(Speaker.Them);
+            _consumerCts = new CancellationTokenSource();
+            _consumer = Task.Run(() => ConsumeAsync(_consumerCts.Token));
+        }
 
-        _consumerCts = new CancellationTokenSource();
-        _consumer = Task.Run(() => ConsumeAsync(_consumerCts.Token));
+        HookCaptures();
+        ResetCaptureStopWait();
 
         _microphone.Start();
         _loopback.Start();
@@ -124,7 +136,11 @@ public sealed class ConversationTranscriber : IDisposable
             _pauseStart = null;
         }
 
-        RecreateSegmenters();
+        // Reinicia el estado de VAD/segmentación sin recrear sesiones de
+        // inferencia (recargar Silero bloquearía el hilo llamador).
+        _micSegmenter?.Reset();
+        _loopSegmenter?.Reset();
+        ResetCaptureStopWait();
         _microphone.Start();
         _loopback.Start();
         SetState(SessionState.Recording);
@@ -138,10 +154,21 @@ public sealed class ConversationTranscriber : IDisposable
         }
 
         StopCaptures();
+        // Espera el drenaje final de ambas capturas: sus últimos bloques se
+        // entregan justo antes de sus eventos Stopped (máx. 2s por seguridad).
+        try
+        {
+            await _capturesStopped.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        catch (TimeoutException)
+        {
+            // Captura colgada (dispositivo desaparecido): seguimos con lo recibido.
+        }
+
         FlushSegmenters();
-        _queue.Writer.TryComplete();
         if (_consumer is not null)
         {
+            _queue.Writer.TryComplete();
             try
             {
                 await _consumer.WaitAsync(TimeSpan.FromSeconds(30));
@@ -174,6 +201,26 @@ public sealed class ConversationTranscriber : IDisposable
         _consumerCts?.Cancel();
         _consumerCts?.Dispose();
         CleanupSegmenters();
+        // Las capturas se crean por sesión y este objeto es su único dueño:
+        // sin esto se acumulan dispositivos COM (MMDevice) por cada sesión.
+        try
+        {
+            _microphone.Dispose();
+        }
+        catch
+        {
+            // Dispositivo ya desaparecido.
+        }
+
+        try
+        {
+            _loopback.Dispose();
+        }
+        catch
+        {
+            // Dispositivo ya desaparecido.
+        }
+
         _clock.Stop();
         GC.SuppressFinalize(this);
     }
@@ -185,10 +232,16 @@ public sealed class ConversationTranscriber : IDisposable
             return;
         }
 
-        var activeTime = ActiveElapsed;
-        var segmenter = chunk.Source == AudioSource.Microphone ? _micSegmenter : _loopSegmenter;
         try
         {
+            AudioTapped?.Invoke(chunk);
+            if (_engine is null)
+            {
+                return;
+            }
+
+            var activeTime = ActiveElapsed;
+            var segmenter = chunk.Source == AudioSource.Microphone ? _micSegmenter : _loopSegmenter;
             Trace?.Invoke($"[chunk {chunk.Source}] t={activeTime:hh\\:mm\\:ss\\.ff} n={chunk.Samples.Length}");
             segmenter?.Feed(chunk.Samples, activeTime);
         }
@@ -196,6 +249,30 @@ public sealed class ConversationTranscriber : IDisposable
         {
             ErrorOccurred?.Invoke(ex);
         }
+    }
+
+    private void HookCaptures()
+    {
+        _microphone.AudioChunkReady += OnChunk;
+        _loopback.AudioChunkReady += OnChunk;
+        _microphone.Stopped += OnCaptureStopped;
+        _microphone.CaptureFailed += (_, _) => OnCaptureStopped(_microphone, EventArgs.Empty);
+        _loopback.Stopped += OnCaptureStopped;
+        _loopback.CaptureFailed += (_, _) => OnCaptureStopped(_loopback, EventArgs.Empty);
+    }
+
+    private void OnCaptureStopped(object? sender, EventArgs e)
+    {
+        if (Interlocked.Increment(ref _stoppedCaptures) >= CaptureCount)
+        {
+            _capturesStopped.TrySetResult();
+        }
+    }
+
+    private void ResetCaptureStopWait()
+    {
+        _stoppedCaptures = 0;
+        _capturesStopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
     private void OnUtterance(Utterance utterance)
@@ -210,7 +287,7 @@ public sealed class ConversationTranscriber : IDisposable
         {
             try
             {
-                var segments = await _engine.TranscribeAsync(utterance, cancellationToken);
+                var segments = await _engine!.TranscribeAsync(utterance, cancellationToken);
                 foreach (var segment in segments)
                 {
                     SegmentReady?.Invoke(segment);
@@ -239,13 +316,6 @@ public sealed class ConversationTranscriber : IDisposable
         };
         segmenter.UtteranceCompleted += OnUtterance;
         return segmenter;
-    }
-
-    private void RecreateSegmenters()
-    {
-        CleanupSegmenters();
-        _micSegmenter = CreateSegmenter(Speaker.Me);
-        _loopSegmenter = CreateSegmenter(Speaker.Them);
     }
 
     private void FlushSegmenters()

@@ -71,6 +71,27 @@ public sealed class SQLiteSessionStoreTests : IDisposable
         Assert.Empty(_store.ListSessions());
     }
 
+    [Fact]
+    public void SaveAndGet_Conserva_Notas_Y_Busca_Por_Notas()
+    {
+        var id = _store.SaveSession(
+            "Archivo clase",
+            new DateTime(2026, 9, 26, 18, 0, 0),
+            TimeSpan.FromMinutes(45),
+            "archivo",
+            "Importado: C:\\grabaciones\\clase.mp4",
+            [new TranscriptSegment(Speaker.Unknown, TimeSpan.Zero, TimeSpan.FromSeconds(4), "tema uno")]);
+
+        var loaded = _store.GetSession(id)!.Value;
+        Assert.Equal("Importado: C:\\grabaciones\\clase.mp4", loaded.Session.Notes);
+        Assert.Equal("archivo", loaded.Session.Tags);
+        Assert.Equal(Speaker.Unknown, Assert.Single(loaded.Segments).Speaker);
+
+        // La búsqueda por texto también examina las notas.
+        var found = Assert.Single(_store.ListSessions("clase.mp4"));
+        Assert.Equal(id, found.Id);
+    }
+
     public void Dispose()
     {
         _store.Dispose();

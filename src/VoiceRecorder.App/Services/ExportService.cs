@@ -43,6 +43,11 @@ public static class ExportService
             sb.AppendLine($"Etiquetas: {session.Tags}");
         }
 
+        if (!string.IsNullOrWhiteSpace(session.Notes))
+        {
+            sb.AppendLine($"Notas: {session.Notes}");
+        }
+
         sb.AppendLine(new string('─', 60));
         foreach (var segment in segments)
         {
@@ -62,6 +67,11 @@ public static class ExportService
         if (!string.IsNullOrWhiteSpace(session.Tags))
         {
             sb.AppendLine($"**Etiquetas:** {session.Tags}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(session.Notes))
+        {
+            sb.AppendLine($"**Notas:** {session.Notes}");
         }
 
         sb.AppendLine();
@@ -96,7 +106,7 @@ public static class ExportService
         Speaker.Me => "Yo",
         Speaker.Them => "Ellos",
         Speaker.Both => "Ambos",
-        _ => "???",
+        _ => "Audio",
     };
 
     private static string Sanitize(string name)

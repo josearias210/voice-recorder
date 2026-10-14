@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Windows;
+using VoiceRecorder.App.Services;
 using VoiceRecorder.App.ViewModels;
 using VoiceRecorder.Audio;
 using VoiceRecorder.Storage;
@@ -10,11 +11,19 @@ namespace VoiceRecorder.App;
 
 public partial class App : System.Windows.Application
 {
+    private const string MutexName = @"Local\VoiceRecorder-SingleInstance";
+    private const string ActivateEventName = @"Local\VoiceRecorder-SingleInstance-Activate";
+
     private static WinForms.NotifyIcon? _trayIcon;
     private static WinForms.ToolStripMenuItem? _menuItemStart;
     private static WinForms.ToolStripMenuItem? _menuItemPause;
     private static WinForms.ToolStripMenuItem? _menuItemStop;
     private static MainWindow? _mainWindow;
+    private static SQLiteSessionStore? _store;
+    private static Mutex? _instanceMutex;
+    private static EventWaitHandle? _activateEvent;
+    private static System.Threading.RegisteredWaitHandle? _activateRegistration;
+    private static bool _shutdownStarted;
 
     public static new App Current => (App)System.Windows.Application.Current;
 
@@ -25,14 +34,44 @@ public partial class App : System.Windows.Application
 
         base.OnStartup(e);
 
+        // Instancia única: si ya hay otra, la despertamos y salimos.
+        _instanceMutex = new Mutex(true, MutexName, out var createdNew);
+        if (!createdNew)
+        {
+            if (EventWaitHandle.TryOpenExisting(ActivateEventName, out var existing))
+            {
+                existing.Set();
+                existing.Dispose();
+            }
+
+            System.Windows.MessageBox.Show(
+                "Voice Recorder ya está en ejecución.",
+                "Voice Recorder",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            Shutdown();
+            return;
+        }
+
+        _activateEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ActivateEventName);
+        _activateRegistration = ThreadPool.RegisterWaitForSingleObject(
+            _activateEvent,
+            (_, _) => ShowMainWindow(),
+            null,
+            Timeout.Infinite,
+            executeOnlyOnce: false);
+
         var dataDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "VoiceRecorder");
-        var store = new SQLiteSessionStore(Path.Combine(dataDir, "sessions.db"));
+        _store = new SQLiteSessionStore(Path.Combine(dataDir, "sessions.db"));
         var models = new ModelManager();
+        var themes = new ThemeService();
+        themes.Initialize();
+        var settings = new SettingsService();
 
-        var viewModel = new MainViewModel(store, models, new WasapiDeviceEnumerator());
-        _mainWindow = new MainWindow(viewModel, store);
+        var viewModel = new MainViewModel(_store, models, new WasapiDeviceEnumerator(), themes, settings);
+        _mainWindow = new MainWindow(viewModel, _store);
         _mainWindow.DataContext = viewModel;
         viewModel.PropertyChanged += (_, args) =>
         {
@@ -40,6 +79,13 @@ public partial class App : System.Windows.Application
             {
                 UpdateTrayState(viewModel.StateText);
             }
+        };
+
+        // Apagado de Windows / cierre de sesión: limpiar antes de salir.
+        SessionEnding += (_, args) =>
+        {
+            args.Cancel = true;
+            BeginCleanShutdown();
         };
 
         InitTray(viewModel);
@@ -115,16 +161,30 @@ public partial class App : System.Windows.Application
         _trayIcon?.ShowBalloonTip(3000, title, message, WinForms.ToolTipIcon.Info);
     }
 
-    private void ExitApplication()
+    private void ExitApplication() => BeginCleanShutdown();
+
+    /// <summary>
+    /// Apaga la app de forma ordenada: cancela importaciones, detiene y guarda
+    /// la sesión activa y libera los recursos antes de Shutdown.
+    /// </summary>
+    private static void BeginCleanShutdown()
     {
+        if (_shutdownStarted)
+        {
+            return;
+        }
+
+        _shutdownStarted = true;
         DispatcherInvoke(async () =>
         {
-            if (_mainWindow is not null)
+            if (_mainWindow?.ViewModel is { } viewModel)
             {
-                await _mainWindow.ViewModel.StopIfActiveAsync();
+                viewModel.CancelImport();
+                await viewModel.StopIfActiveAsync();
+                viewModel.DisposeResources();
             }
 
-            Shutdown();
+            Current.Shutdown();
         });
     }
 
@@ -135,13 +195,31 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        var viewModel = _mainWindow?.ViewModel;
+        viewModel?.CancelImport();
+        viewModel?.DisposeResources();
+
         if (_trayIcon is not null)
         {
             _trayIcon.Visible = false;
             _trayIcon.Dispose();
         }
 
+        _activateRegistration?.Unregister(null);
+        _activateEvent?.Dispose();
+        _store?.Dispose();
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+
+        try
+        {
+            _instanceMutex?.ReleaseMutex();
+        }
+        catch (ApplicationException)
+        {
+            // El hilo actual no es el propietario (arranque duplicado): nada que liberar.
+        }
+
+        _instanceMutex?.Dispose();
         base.OnExit(e);
     }
 }

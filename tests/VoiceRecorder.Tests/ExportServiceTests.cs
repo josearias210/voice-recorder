@@ -53,6 +53,48 @@ public class ExportServiceTests
     }
 
     [Fact]
+    public void Txt_Etiqueta_Speaker_Unknown_Como_Audio()
+    {
+        IReadOnlyList<TranscriptSegment> segments =
+        [
+            new(Speaker.Unknown, TimeSpan.Zero, TimeSpan.FromSeconds(3), "contenido del archivo"),
+        ];
+
+        var content = ExportService.BuildContent(Session, segments, ExportFormat.Txt);
+
+        Assert.Contains("[00:00:00] Audio: contenido del archivo", content);
+        Assert.DoesNotContain("???", content);
+    }
+
+    [Fact]
+    public void Txt_Incluye_Notas_Cuando_Hay()
+    {
+        var session = Session with { Notes = "Importado: C:\\grabaciones\\clase.mp4" };
+
+        var content = ExportService.BuildContent(session, Segments, ExportFormat.Txt);
+
+        Assert.Contains("Notas: Importado: C:\\grabaciones\\clase.mp4", content);
+    }
+
+    [Fact]
+    public void Txt_Omite_Notas_Cuando_Vacias()
+    {
+        var content = ExportService.BuildContent(Session, Segments, ExportFormat.Txt);
+
+        Assert.DoesNotContain("Notas:", content);
+    }
+
+    [Fact]
+    public void Markdown_Incluye_Notas()
+    {
+        var session = Session with { Notes = "Origen: reunión grabada" };
+
+        var content = ExportService.BuildContent(session, Segments, ExportFormat.Markdown);
+
+        Assert.Contains("**Notas:** Origen: reunión grabada", content);
+    }
+
+    [Fact]
     public void BuildFileName_Sanea_Caracteres_Invalidos()
     {
         var session = Session with { Title = "Llamada: equipo/producción?" };

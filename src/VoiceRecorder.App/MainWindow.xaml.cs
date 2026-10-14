@@ -22,6 +22,7 @@ public partial class MainWindow : Window
         {
             ChatScroll.ScrollToEnd();
         };
+        viewModel.SessionImported += OpenImportedSession;
         viewModel.SessionChanged += UpdateTaskbarState;
     }
 
@@ -46,7 +47,22 @@ public partial class MainWindow : Window
             return;
         }
 
-        var chat = new ChatWindow(_store, row.Summary, () => ViewModel.LoadHistory(ViewModel.SearchText))
+        OpenSessionChat(row.Summary);
+    }
+
+    private void OpenImportedSession(long sessionId)
+    {
+        if (_store.GetSession(sessionId) is not (var summary, _))
+        {
+            return;
+        }
+
+        OpenSessionChat(summary);
+    }
+
+    private void OpenSessionChat(SessionSummary summary)
+    {
+        var chat = new ChatWindow(_store, summary, () => ViewModel.LoadHistory(ViewModel.SearchText))
         {
             Owner = this,
         };
@@ -78,6 +94,28 @@ public partial class MainWindow : Window
     private void Model_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         ViewModel?.RefreshModelAvailability();
+    }
+
+    private void Window_DragOver(object sender, System.Windows.DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop)
+            ? System.Windows.DragDropEffects.Copy
+            : System.Windows.DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void Window_Drop(object sender, System.Windows.DragEventArgs e)
+    {
+        if (e.Data.GetData(System.Windows.DataFormats.FileDrop) is not string[] files)
+        {
+            return;
+        }
+
+        var mediaFiles = files.Where(MainViewModel.IsMediaFile).ToArray();
+        if (mediaFiles.Length > 0)
+        {
+            _ = ViewModel.TranscribeFilesAsync(mediaFiles);
+        }
     }
 
     protected override void OnClosing(CancelEventArgs e)

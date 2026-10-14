@@ -22,15 +22,23 @@ public sealed class SpeechSegmenter : IDisposable
 {
     private const float EnterThreshold = 0.55f;
     private const float ExitThreshold = 0.4f;
-    private static readonly TimeSpan MinSpeech = TimeSpan.FromMilliseconds(180);
-    private static readonly TimeSpan EndSilence = TimeSpan.FromMilliseconds(650);
+    // Sobre voz pura (sin relleno): filtra clics/ruidos breves sin perder
+    // palabras cortas ("sí", "no" duran ~150-250ms).
+    private static readonly TimeSpan MinSpeech = TimeSpan.FromMilliseconds(150);
+    private static readonly TimeSpan EndSilence = TimeSpan.FromMilliseconds(550);
     private static readonly TimeSpan MaxUtterance = TimeSpan.FromSeconds(29);
-    private static readonly TimeSpan Padding = TimeSpan.FromMilliseconds(120);
+    private static readonly TimeSpan Padding = TimeSpan.FromMilliseconds(200);
+
+    private const int InitialCarrySamples = 16000;
 
     private readonly IVad _vad;
     private readonly Speaker _speaker;
+    private readonly object _gate = new();
     private readonly List<float> _pending = [];
-    private readonly List<float> _carry = new(8192);
+
+    /// <summary>Sobrante de alimentación pendiente de completar una ventana (buffer propio, sin allocs por ventana).</summary>
+    private float[] _carry = new float[InitialCarrySamples];
+    private int _carryCount;
 
     private bool _inSpeech;
     private TimeSpan _speechStart;
@@ -59,21 +67,30 @@ public sealed class SpeechSegmenter : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(samples);
 
-        _chunkStartTime = chunkStartActiveTime;
-        _carry.AddRange(samples);
-        var windowSize = _vad.WindowSize;
-        var offset = 0;
-
-        while (offset + windowSize <= _carry.Count)
+        lock (_gate)
         {
-            var window = _carry.GetRange(offset, windowSize);
-            ProcessWindow(window, offset);
-            offset += windowSize;
-        }
+            _chunkStartTime = chunkStartActiveTime;
+            if (_carry.Length < _carryCount + samples.Length)
+            {
+                Array.Resize(ref _carry, Math.Max(_carry.Length * 2, _carryCount + samples.Length));
+            }
 
-        if (offset > 0)
-        {
-            _carry.RemoveRange(0, offset);
+            Array.Copy(samples, 0, _carry, _carryCount, samples.Length);
+            _carryCount += samples.Length;
+
+            var windowSize = _vad.WindowSize;
+            var offset = 0;
+            while (offset + windowSize <= _carryCount)
+            {
+                ProcessWindow(_carry.AsSpan(offset, windowSize), offset);
+                offset += windowSize;
+            }
+
+            if (offset > 0)
+            {
+                Array.Copy(_carry, offset, _carry, 0, _carryCount - offset);
+                _carryCount -= offset;
+            }
         }
     }
 
@@ -81,9 +98,32 @@ public sealed class SpeechSegmenter : IDisposable
     public void Flush()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (_inSpeech && _pending.Count > 0)
+        lock (_gate)
         {
-            EmitUtterance();
+            if (_inSpeech && _pending.Count > 0)
+            {
+                EmitUtterance();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Vuelve al estado inicial (tras una pausa): descarta audio pendiente y
+    /// reinicia el estado del VAD sin crear una nueva sesión de inferencia.
+    /// </summary>
+    public void Reset()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        lock (_gate)
+        {
+            _carryCount = 0;
+            _pending.Clear();
+            _inSpeech = false;
+            _speechStart = TimeSpan.Zero;
+            _lastVoiceTime = TimeSpan.Zero;
+            _pendingStart = TimeSpan.Zero;
+            _chunkStartTime = TimeSpan.Zero;
+            _vad.Reset();
         }
     }
 
@@ -99,24 +139,26 @@ public sealed class SpeechSegmenter : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private void ProcessWindow(List<float> window, int offsetInChunk)
+    private void ProcessWindow(ReadOnlySpan<float> window, int offsetInChunk)
     {
-        var probability = _vad.DetectVoiceProbability(window.ToArray());
+        var probability = _vad.DetectVoiceProbability(window);
         var windowStart = _chunkStartTime.Add(TimeSpan.FromSeconds((double)offsetInChunk / AudioConstants.TargetSampleRate));
+
+        // Se activa el estado de voz ANTES de almacenar la ventana: la ventana
+        // con el arranque de la voz nunca se pierde por el relleno.
+        if (probability >= EnterThreshold && !_inSpeech)
+        {
+            _inSpeech = true;
+            _speechStart = windowStart;
+            _pendingStart = windowStart;
+            Trace?.Invoke($"[{_speaker}] entra voz @{windowStart:hh\\:mm\\:ss\\.ff} p={probability:F2}");
+        }
 
         AppendToPending(window);
 
         if (probability >= EnterThreshold)
         {
-            if (!_inSpeech)
-            {
-                _inSpeech = true;
-                _speechStart = windowStart;
-                _pendingStart = windowStart;
-                Trace?.Invoke($"[{_speaker}] entra voz @{windowStart:hh\\:mm\\:ss\\.ff} p={probability:F2}");
-            }
-
-            _lastVoiceTime = windowStart.Add(TimeSpan.FromSeconds((double)window.Count / AudioConstants.TargetSampleRate));
+            _lastVoiceTime = windowStart.Add(TimeSpan.FromSeconds((double)window.Length / AudioConstants.TargetSampleRate));
             SpeechDetected?.Invoke(_speaker);
             if (_lastVoiceTime - _speechStart >= MaxUtterance)
             {
@@ -131,7 +173,7 @@ public sealed class SpeechSegmenter : IDisposable
             return;
         }
 
-        var windowEnd = windowStart.Add(TimeSpan.FromSeconds((double)window.Count / AudioConstants.TargetSampleRate));
+        var windowEnd = windowStart.Add(TimeSpan.FromSeconds((double)window.Length / AudioConstants.TargetSampleRate));
         var silenceSince = windowEnd - _lastVoiceTime;
         if (silenceSince >= EndSilence)
         {
@@ -139,20 +181,27 @@ public sealed class SpeechSegmenter : IDisposable
         }
     }
 
-    private void AppendToPending(List<float> window)
+    private void AppendToPending(ReadOnlySpan<float> window)
     {
         if (_inSpeech)
         {
-            _pending.AddRange(window);
+            foreach (var sample in window)
+            {
+                _pending.Add(sample);
+            }
         }
-        else if (_pending.Count > 0)
+        else
         {
-            // Relleno inicial (pre-roll) mientras no haya voz confirmada: máx. Padding.
+            // Relleno inicial (pre-roll) constante mientras no haya voz: máx. Padding.
+            // Se acumula desde el principio para no cortar el arranque del enunciado.
             var maxPadding = (int)(Padding.TotalSeconds * AudioConstants.TargetSampleRate);
             var space = maxPadding - _pending.Count;
             if (space > 0)
             {
-                _pending.AddRange(window.Take(space));
+                foreach (var sample in window[..Math.Min(space, window.Length)])
+                {
+                    _pending.Add(sample);
+                }
             }
         }
     }
@@ -162,15 +211,17 @@ public sealed class SpeechSegmenter : IDisposable
         var samples = _pending.ToArray();
         _pending.Clear();
 
-        var speechDuration = TimeSpan.FromSeconds((double)samples.Length / AudioConstants.TargetSampleRate);
+        // Duración de voz real (sin contar pre-roll ni silencio final): evita
+        // emitir clics/ruidos breves que el relleno haría pasar el umbral.
+        var speechDuration = _lastVoiceTime - _speechStart;
         if (speechDuration >= MinSpeech)
         {
-            Trace?.Invoke($"[{_speaker}] enunciado {_pendingStart:hh\\:mm\\:ss\\.ff} dur={speechDuration.TotalSeconds:F2}s");
+            Trace?.Invoke($"[{_speaker}] enunciado {_pendingStart:hh\\:mm\\:ss\\.ff} voz={speechDuration.TotalSeconds:F2}s");
             UtteranceCompleted?.Invoke(new Utterance(_speaker, samples, _pendingStart, _lastVoiceTime));
         }
         else
         {
-            Trace?.Invoke($"[{_speaker}] descartado dur={speechDuration.TotalSeconds:F2}s");
+            Trace?.Invoke($"[{_speaker}] descartado voz={speechDuration.TotalSeconds:F2}s");
         }
 
         if (continuation)
