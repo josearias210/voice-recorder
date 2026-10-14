@@ -24,9 +24,12 @@ Meet · Teams · Zoom · WhatsApp Web · Discord — si suena en tu PC, se trans
 - ⏸ **Pausar y reanudar**: el cronómetro de sesión excluye las pausas.
 - 💾 **Historial con etiquetas**: sesiones en SQLite, reabribles como vista de chat.
 - 📤 **Exportar**: TXT, Markdown y SRT (subtítulos).
+- **Transcribir archivos**: importa audio o vídeo (mp3, wav, m4a, mp4, mkv, mov, …) arrastrándolos a la ventana o con el botón *Transcribir archivo*; cada archivo se guarda como una sesión del historial.
 - 🖥️ **Bandeja del sistema**: control Iniciar/Pausar/Detener sin abrir la ventana.
 - 🔄 **Auto-actualización**: con deltas incrementales vía [Velopack](https://github.com/velopack/velopack).
 - 🔇 **Sin audio guardado**: por defecto solo se conserva el texto (el audio vive en memoria).
+- 📝 **Notas de la sesión**: añade notas libres en el chat de cada sesión y guárdalas con título y etiquetas.
+- 🎚️ **Modo «grabar audio primero»**: opcional; graba el audio a WAV (micrófono y llamada por separado) sin transcribir en vivo y lo transcribe al pulsar Detener.
 
 ## 🚀 Instalación
 
@@ -74,6 +77,21 @@ Requisitos: [.NET SDK 8](https://dotnet.microsoft.com/download/dotnet/8.0) y Win
 4. Abre la sesión desde el **Historial** para editar título/etiquetas o **exportar** (TXT/MD/SRT).
 
 > 💡 **Consejo**: usa auriculares. Con altavoces, tu micrófono capta la voz remota y pueden aparecer burbujas `Yo` duplicadas.
+
+### Modo «grabar audio primero»
+
+Activa la casilla **Grabar audio y transcribir al detener** si tu equipo va justo o prefieres el texto al final:
+
+1. Pulsa **▶ Iniciar**: arranca al instante (no carga modelos) y graba dos WAV — `micro.wav` y `llamada.wav` — en `%LOCALAPPDATA%\VoiceRecorder\audio`.
+2. Pulsa **■ Detener**: se transcribe el audio grabado (con la atribución `Yo`/`Ellos` de cada canal) y la sesión se guarda con las rutas del audio en las notas.
+3. El audio se conserva en disco (≈115 MB/hora por canal); puedes borrarlo cuando quieras desde esa carpeta.
+
+### Transcribir archivos de audio o vídeo
+
+Arrastra uno o varios archivos a la ventana, o pulsa **Transcribir archivo…**. Se transcriben en local con el modelo e idioma seleccionados, cada uno se guarda como una sesión del historial (con su ruta en las notas) y puedes exportarla igual que cualquier otra (TXT/MD/SRT).
+
+- Formatos admitidos: mp3, wav, m4a, mp4, mkv, mov, avi, wma, aac, flac, ogg, opus, webm (según códecs del sistema).
+- La barra de progreso muestra el avance de cada archivo; puedes interrumpir con **Cancelar** (no se guarda nada a medias).
 
 ### Modelos de transcripción
 
@@ -154,14 +172,15 @@ Ver [CONTRIBUTING.md](CONTRIBUTING.md) para convenciones y flujo de PRs.
 
 ## 🔒 Privacidad
 
-- El audio de las llamadas se procesa **íntegramente en tu equipo**.
-- No hay telemetría, analytics ni llamadas de red salvo la descarga de modelos que tú inicies.
-- Las transcripciones se guardan en tu disco local (`%LOCALAPPDATA%\VoiceRecorder`).
-- Respeta la legislación y consentimiento de tu jurisdicción antes de grabar conversaciones.
+- El audio de las llamadas se procesa **íntegramente en tu equipo** (Whisper + Silero VAD locales).
+- No hay telemetría, analytics ni informes de fallos. Lo único que sale de tu equipo son las descargas de modelos que tú inicias y la comprobación de actualizaciones contra GitHub Releases.
+- Las transcripciones se guardan en tu disco local (`%LOCALAPPDATA%\VoiceRecorder`); el audio solo se escribe a disco si activas el modo «Grabar audio primero».
+- Detalles completos en [PRIVACY.md](PRIVACY.md).
+- Respeta la legislación y el consentimiento de tu jurisdicción antes de grabar conversaciones — lee el [aviso legal](DISCLAIMER.md).
 
 ## 📄 Licencia
 
-[MIT](LICENSE) — listo para uso libre. Las contribuciones se publican bajo la misma licencia.
+[MIT](LICENSE) — listo para uso libre. Las contribuciones se publican bajo la misma licencia. El software se ofrece «tal cual», sin garantías: el uso es bajo tu responsabilidad ([aviso legal](DISCLAIMER.md)).
 
 ---
 
@@ -169,9 +188,10 @@ Ver [CONTRIBUTING.md](CONTRIBUTING.md) para convenciones y flujo de PRs.
 
 ## English (TL;DR)
 
-Windows desktop app that transcribes **any call app** (Meet, Teams, Zoom, …) **in real time**, using system-level audio capture (WASAPI loopback + microphone), **Silero VAD** for speaker attribution (`Me` / `Them`) and **local Whisper** transcription — no cloud, no virtual audio drivers, audio is never saved.
+Windows desktop app that transcribes **any call app** (Meet, Teams, Zoom, …) **in real time**, using system-level audio capture (WASAPI loopback + microphone), **Silero VAD** for speaker attribution (`Me` / `Them`) and **local Whisper** transcription — no cloud, no virtual audio drivers; audio is never saved by default (the optional *record-first* mode stores it locally).
 
 - **Install**: grab the setup or portable ZIP from [Releases](../../releases).
+- **Import & transcribe files**: drag audio/video files (mp3, mp4, m4a, mkv, …) onto the window — each one is saved as a session, fully local.
 - **Build**: `dotnet build VoiceRecorder.slnx` (needs .NET 8 SDK, Windows).
 - **Test**: `dotnet test`.
 - **License**: MIT.
