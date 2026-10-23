@@ -21,7 +21,13 @@ public class RelayCommand : ICommand
 
     public bool CanExecute(object? parameter) => _canExecute?.Invoke(parameter) ?? true;
 
-    public void Execute(object? parameter) => _execute(parameter);
+    public void Execute(object? parameter)
+    {
+        if (CanExecute(parameter))
+        {
+            _execute(parameter);
+        }
+    }
 }
 
 public class AsyncRelayCommand : ICommand
@@ -50,7 +56,7 @@ public class AsyncRelayCommand : ICommand
 
     public async void Execute(object? parameter)
     {
-        if (Interlocked.CompareExchange(ref _running, 1, 0) != 0)
+        if (!CanExecute(parameter) || Interlocked.CompareExchange(ref _running, 1, 0) != 0)
         {
             return;
         }

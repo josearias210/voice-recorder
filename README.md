@@ -44,7 +44,7 @@ La app **se actualiza sola**: al arrancar comprueba si hay una versión nueva y 
 ### Gestores de paquetes
 
 ```powershell
-# winget (canal oficial de Windows)
+# winget (requiere que Microsoft haya aprobado el alta del paquete)
 winget install Josearias210.VoiceRecorder
 
 # scoop (bucket de la comunidad del proyecto)
@@ -52,7 +52,7 @@ scoop bucket add josearias210 https://github.com/josearias210/voice-recorder
 scoop install voice-recorder
 ```
 
-> ℹ️ La app instalada por cualquier vía se auto-actualiza de la misma forma: el canal solo afecta a la primera instalación.
+> El alta en winget está pendiente de publicación en su catálogo. El instalador de GitHub Releases está disponible directamente. La auto-actualización integrada requiere una instalación con Setup; no está disponible en el portable ni en Scoop.
 
 ### Portable
 
@@ -67,7 +67,7 @@ dotnet build VoiceRecorder.slnx -c Release
 dotnet run --project src/VoiceRecorder.App
 ```
 
-Requisitos: [.NET SDK 8](https://dotnet.microsoft.com/download/dotnet/8.0) y Windows.
+Requisitos: [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0) y Windows. El instalador y el portable ya incluyen el runtime .NET 8.
 
 ## 📖 Uso
 
@@ -82,9 +82,9 @@ Requisitos: [.NET SDK 8](https://dotnet.microsoft.com/download/dotnet/8.0) y Win
 
 Activa la casilla **Grabar audio y transcribir al detener** si tu equipo va justo o prefieres el texto al final:
 
-1. Pulsa **▶ Iniciar**: arranca al instante (no carga modelos) y graba dos WAV — `micro.wav` y `llamada.wav` — en `%LOCALAPPDATA%\VoiceRecorder\audio`.
+1. Pulsa **▶ Iniciar**: arranca al instante (no carga modelos) y graba dos WAV por sesión — `grabacion-<fecha>-micro.wav` y `grabacion-<fecha>-llamada.wav` — en `%LOCALAPPDATA%\VoiceRecorder\audio`.
 2. Pulsa **■ Detener**: se transcribe el audio grabado (con la atribución `Yo`/`Ellos` de cada canal) y la sesión se guarda con las rutas del audio en las notas.
-3. El audio se conserva en disco (≈115 MB/hora por canal); puedes borrarlo cuando quieras desde esa carpeta.
+3. El audio se conserva en disco (≈115 MB/hora por canal); puedes borrarlo cuando quieras desde esa carpeta. Si falla la transcripción, la sesión conserva las rutas para volver a importar los WAV.
 
 ### Transcribir archivos de audio o vídeo
 
@@ -137,10 +137,10 @@ scripts/                        · Build/publish + alta en winget
 
 ## 🗺️ Roadmap
 
-- [ ] Guardar audio opcional (WAV/Opus por sesión)
+- [x] Guardar audio opcional (WAV por sesión)
 - [ ] Captura por proceso (ignorar notificaciones y música)
 - [ ] Resúmenes automáticos con IA local (Ollama)
-- [ ] Búsqueda de texto completo en transcripciones
+- [x] Búsqueda en títulos, etiquetas, notas y texto de las transcripciones
 - [ ] Identificación de hablantes reales (diarización)
 
 ## 🛠️ Desarrollo
@@ -192,7 +192,7 @@ Windows desktop app that transcribes **any call app** (Meet, Teams, Zoom, …) *
 
 - **Install**: grab the setup or portable ZIP from [Releases](../../releases).
 - **Import & transcribe files**: drag audio/video files (mp3, mp4, m4a, mkv, …) onto the window — each one is saved as a session, fully local.
-- **Build**: `dotnet build VoiceRecorder.slnx` (needs .NET 8 SDK, Windows).
+- **Build**: `dotnet build VoiceRecorder.slnx` (needs .NET 10 SDK, Windows; targets .NET 8).
 - **Test**: `dotnet test`.
 - **License**: MIT.
 

@@ -491,4 +491,6 @@ installer/output/
 *.user
 
 # Paquetes vpk generados en local
-releases/
+/releases/
+!docs/releases/
+!docs/releases/*.md

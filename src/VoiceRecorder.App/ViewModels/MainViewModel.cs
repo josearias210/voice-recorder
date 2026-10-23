@@ -52,6 +52,7 @@ public sealed class MainViewModel : ViewModelBase
     private WavChunkWriter? _micWriter;
     private WavChunkWriter? _loopWriter;
     private bool _isFinalizing;
+    private bool _isBusy;
     private bool _recordAudioFirst;
 
     public MainViewModel(
@@ -97,7 +98,7 @@ public sealed class MainViewModel : ViewModelBase
         TranscribeFileCommand = new AsyncRelayCommand(_ => TranscribeFilesAsync(), _ => CanStart);
         CancelImportCommand = new RelayCommand(_ => _importCts?.Cancel(), _ => IsImporting);
         DownloadModelCommand = new AsyncRelayCommand(_ => DownloadModelAsync(), _ => CanDownloadModel);
-        UpdateNowCommand = new AsyncRelayCommand(_ => UpdateNowAsync(), _ => UpdateAvailable);
+        UpdateNowCommand = new AsyncRelayCommand(_ => UpdateNowAsync(), _ => UpdateAvailable && CanStart);
         SearchCommand = new RelayCommand(_ => LoadHistory(SearchText));
     }
 
@@ -203,7 +204,7 @@ public sealed class MainViewModel : ViewModelBase
         "VoiceRecorder",
         "audio");
 
-    /// <summary>Indica si se está transcribiendo el audio grabado al detener la sesión.</summary>
+    /// <summary>Indica si se está deteniendo, transcribiendo o guardando la sesión.</summary>
     public bool IsFinalizing
     {
         get => _isFinalizing;
@@ -213,11 +214,27 @@ public sealed class MainViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(CanStart));
                 CommandManager.InvalidateRequerySuggested();
+                SessionChanged?.Invoke();
             }
         }
     }
 
     public string? SearchText { get; set; }
+
+    /// <summary>Indica si se preparan modelos o se descarga una actualización.</summary>
+    public bool IsBusy
+    {
+        get => _isBusy;
+        private set
+        {
+            if (Set(ref _isBusy, value))
+            {
+                OnPropertyChanged(nameof(CanStart));
+                CommandManager.InvalidateRequerySuggested();
+                SessionChanged?.Invoke();
+            }
+        }
+    }
 
     public RelayCommand SearchCommand { get; }
 
@@ -321,6 +338,7 @@ public sealed class MainViewModel : ViewModelBase
                 OnPropertyChanged(nameof(CanCancelImport));
                 OnPropertyChanged(nameof(CanStart));
                 CommandManager.InvalidateRequerySuggested();
+                SessionChanged?.Invoke();
             }
         }
     }
@@ -336,13 +354,13 @@ public sealed class MainViewModel : ViewModelBase
     }
 
     /// <summary>True si se puede iniciar una sesión (usado también por bindings de la UI).</summary>
-    public bool CanStart => State is SessionState.Idle or SessionState.Stopped && !IsImporting && !IsFinalizing;
+    public bool CanStart => State is SessionState.Idle or SessionState.Stopped && !IsImporting && !IsFinalizing && !IsBusy;
 
-    private bool CanPauseResume => State is SessionState.Recording or SessionState.Paused;
+    private bool CanPauseResume => State is SessionState.Recording or SessionState.Paused && !IsFinalizing;
 
-    private bool CanStop => State is SessionState.Recording or SessionState.Paused;
+    private bool CanStop => State is SessionState.Recording or SessionState.Paused && !IsFinalizing;
 
-    private bool CanDownloadModel => !_models.IsAvailable(SelectedModel);
+    private bool CanDownloadModel => CanStart && !_models.IsAvailable(SelectedModel);
 
     /// <summary>Etiqueta del botón de descarga: refleja si el modelo ya está en caché.</summary>
     public string DownloadButtonText => _models.IsAvailable(SelectedModel) ? "Descargado" : "Descargar";
@@ -451,6 +469,12 @@ public sealed class MainViewModel : ViewModelBase
 
     private async Task StartSessionAsync()
     {
+        if (!CanStart)
+        {
+            return;
+        }
+
+        IsBusy = true;
         try
         {
             WhisperTranscriber? engine = null;
@@ -518,6 +542,7 @@ public sealed class MainViewModel : ViewModelBase
         }
         finally
         {
+            IsBusy = false;
             OnPropertyChanged(nameof(CanStart));
             CommandManager.InvalidateRequerySuggested();
         }
@@ -567,7 +592,9 @@ public sealed class MainViewModel : ViewModelBase
         else if (State == SessionState.Paused)
         {
             _transcriber.Resume();
-            StatusText = "Transcripción en vivo. El audio no se guarda.";
+            StatusText = RecordAudioFirst
+                ? "Grabando audio. Se transcribirá al detener; los WAV se conservan en disco."
+                : "Transcripción en vivo. El audio no se guarda.";
         }
     }
 
@@ -580,6 +607,7 @@ public sealed class MainViewModel : ViewModelBase
 
         var transcriber = _transcriber;
         _transcriber = null;
+        IsFinalizing = true;
         try
         {
             StatusText = "Deteniendo y guardando…";
@@ -594,11 +622,11 @@ public sealed class MainViewModel : ViewModelBase
             var duration = transcriber.ActiveElapsed;
             IReadOnlyList<TranscriptSegment> segments;
             var notes = string.Empty;
+            string? transcriptionError = null;
 
             if (RecordAudioFirst && micPath is not null)
             {
                 // Modo "grabar primero": ahora sí, transcripción del archivo.
-                IsFinalizing = true;
                 DownloadPercent = 0;
                 try
                 {
@@ -610,11 +638,10 @@ public sealed class MainViewModel : ViewModelBase
                     // La grabación existe aunque falle la transcripción: se guarda igual.
                     segments = [];
                     notes = BuildAudioNotes(micPath, loopPath);
-                    StatusText = $"No se pudo transcribir el audio grabado ({ex.Message}); la sesión se guarda sin texto.";
+                    transcriptionError = ex.Message;
                 }
                 finally
                 {
-                    IsFinalizing = false;
                     DownloadPercent = -1;
                 }
             }
@@ -635,7 +662,9 @@ public sealed class MainViewModel : ViewModelBase
                 notes,
                 segments));
 
-            StatusText = RecordAudioFirst
+            StatusText = transcriptionError is not null
+                ? $"Sesión y audio guardados, pero no se pudo transcribir: {transcriptionError}. Puedes importar los WAV para reintentar."
+                : RecordAudioFirst
                 ? $"Sesión guardada ({segments.Count} segmentos). Audio conservado en {AudioDirectory}"
                 : $"Sesión guardada ({segments.Count} segmentos).";
             Segments.Clear();
@@ -648,6 +677,7 @@ public sealed class MainViewModel : ViewModelBase
         finally
         {
             transcriber.Dispose();
+            IsFinalizing = false;
             OnPropertyChanged(nameof(CanStart));
             CommandManager.InvalidateRequerySuggested();
         }
@@ -734,6 +764,11 @@ public sealed class MainViewModel : ViewModelBase
     /// </summary>
     public async Task TranscribeFilesAsync(IReadOnlyList<string>? filePaths = null)
     {
+        if (!CanStart)
+        {
+            return;
+        }
+
         if (Interlocked.Exchange(ref _importGuard, 1) == 1)
         {
             return;
@@ -771,7 +806,7 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
-        if (State is SessionState.Recording or SessionState.Paused)
+        if (!CanStart)
         {
             StatusText = "No se puede importar mientras hay una sesión de grabación en curso.";
             return;
@@ -809,6 +844,7 @@ public sealed class MainViewModel : ViewModelBase
                     }, null));
                     var segments = await Task.Run(
                         () => transcriber.TranscribeAsync(source, progress, cancellation.Token));
+                    cancellation.Token.ThrowIfCancellationRequested();
 
                     var title = $"Archivo {Path.GetFileNameWithoutExtension(file)} {startedAt:dd/MM HH:mm}";
                     var duration = source.Duration;
@@ -861,6 +897,12 @@ public sealed class MainViewModel : ViewModelBase
 
     private async Task DownloadModelAsync()
     {
+        if (!CanDownloadModel)
+        {
+            return;
+        }
+
+        IsBusy = true;
         try
         {
             StatusText = $"Descargando {SelectedModel.DisplayName}…";
@@ -877,6 +919,7 @@ public sealed class MainViewModel : ViewModelBase
         }
         finally
         {
+            IsBusy = false;
             DownloadPercent = -1;
             RefreshModelAvailability();
         }
@@ -936,21 +979,39 @@ public sealed class MainViewModel : ViewModelBase
 
     private async Task UpdateNowAsync()
     {
-        var info = await _updates.CheckAsync();
-        if (info?.TargetFullRelease is null)
+        if (!CanStart)
         {
-            UpdateAvailable = false;
             return;
         }
 
-        StatusText = "Descargando actualización…";
-        DownloadPercent = 0;
-        await _updates.DownloadAsync(
-            info,
-            p => _ui.Post(_ => DownloadPercent = p, null),
-            CancellationToken.None);
-        StatusText = $"Actualización v{info.TargetFullRelease.Version} lista. Reiniciando…";
-        _updates.ApplyAndRestart(info);
+        IsBusy = true;
+        try
+        {
+            var info = await _updates.CheckAsync();
+            if (info?.TargetFullRelease is null)
+            {
+                UpdateAvailable = false;
+                return;
+            }
+
+            StatusText = "Descargando actualización…";
+            DownloadPercent = 0;
+            await _updates.DownloadAsync(
+                info,
+                p => _ui.Post(_ => DownloadPercent = p, null),
+                CancellationToken.None);
+            StatusText = $"Actualización v{info.TargetFullRelease.Version} lista. Reiniciando…";
+            _updates.ApplyAndRestart(info);
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"No se pudo actualizar: {ex.Message}. Puedes volver a intentarlo.";
+        }
+        finally
+        {
+            DownloadPercent = -1;
+            IsBusy = false;
+        }
     }
 
     private void OnSegmentReady(TranscriptSegment segment)

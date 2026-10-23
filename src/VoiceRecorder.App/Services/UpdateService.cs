@@ -1,4 +1,5 @@
 using Velopack;
+using Velopack.Sources;
 
 namespace VoiceRecorder.App.Services;
 
@@ -16,16 +17,33 @@ public sealed class UpdateService
     public UpdateService()
     {
         var source = Environment.GetEnvironmentVariable("VR_UPDATE_SOURCE");
-        var url = string.IsNullOrWhiteSpace(source) ? DefaultSource : source.Trim();
         try
         {
-            _manager = new UpdateManager(url);
+            _manager = new UpdateManager(CreateSource(source));
         }
         catch
         {
             // Fuente inválida: la app funciona sin actualizaciones.
             _manager = null;
         }
+    }
+
+    internal static IUpdateSource CreateSource(string? source)
+    {
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            return new GithubSource(DefaultSource, null, false);
+        }
+
+        var path = source.Trim();
+        if (Uri.TryCreate(path, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https")
+        {
+            return uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase)
+                ? new GithubSource(path, null, false)
+                : new SimpleWebSource(path);
+        }
+
+        return new SimpleFileSource(new System.IO.DirectoryInfo(path));
     }
 
     /// <summary>Solo hay soporte de update si la app fue instalada con vpk (Setup).</summary>

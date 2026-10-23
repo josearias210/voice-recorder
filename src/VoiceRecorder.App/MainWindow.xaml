@@ -247,16 +247,16 @@
                 BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,10,0,0">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Modelo:" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" />
-                <ComboBox ItemsSource="{Binding ModelOptions}" SelectedItem="{Binding SelectedModel}" DisplayMemberPath="DisplayName"
+                <ComboBox ItemsSource="{Binding ModelOptions}" SelectedItem="{Binding SelectedModel}" DisplayMemberPath="DisplayName" IsEnabled="{Binding CanStart}"
                           MinWidth="170" Margin="8,0,4,0" VerticalContentAlignment="Center" SelectionChanged="Model_SelectionChanged" />
                 <Button Content="{Binding DownloadButtonText}" Command="{Binding DownloadModelCommand}"
                         Style="{StaticResource SecondaryButton}" MinWidth="110"
                         ToolTip="Descarga el modelo seleccionado a tu PC (una sola vez; después funciona sin internet)" />
                 <TextBlock Text="Idioma:" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="18,0,0,0" />
-                <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedValuePath="Code" SelectedValue="{Binding SelectedLanguageCode}"
+                <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedValuePath="Code" SelectedValue="{Binding SelectedLanguageCode}" IsEnabled="{Binding CanStart}"
                           DisplayMemberPath="Name" MinWidth="150" Margin="8,0,0,0" VerticalContentAlignment="Center" />
                 <TextBlock Text="Micrófono:" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="18,0,0,0" />
-                <ComboBox ItemsSource="{Binding MicrophoneOptions}" SelectedItem="{Binding SelectedMicrophone}"
+                <ComboBox ItemsSource="{Binding MicrophoneOptions}" SelectedItem="{Binding SelectedMicrophone}" IsEnabled="{Binding CanStart}"
                           DisplayMemberPath="Name" MinWidth="230" MaxWidth="280" Margin="8,0,0,0" VerticalContentAlignment="Center" />
                 <TextBlock Text="Tema:" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="18,0,0,0" />
                 <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedValue="{Binding SelectedTheme}" SelectedValuePath="Theme"

@@ -14,6 +14,10 @@
 
   <ItemGroup>
     <Content Include="Assets\app.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\LICENSE" Link="LICENSE" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\PRIVACY.md" Link="PRIVACY.md" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\DISCLAIMER.md" Link="DISCLAIMER.md" CopyToPublishDirectory="PreserveNewest" />
+    <InternalsVisibleTo Include="VoiceRecorder.Tests" />
   </ItemGroup>
 
   <ItemGroup>

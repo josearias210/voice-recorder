@@ -39,8 +39,15 @@ public sealed class FileTranscriber
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(source);
+        cancellationToken.ThrowIfCancellationRequested();
         var sampleRate = source.SampleRate > 0 ? source.SampleRate : AudioConstants.TargetSampleRate;
         var totalSeconds = source.Duration.TotalSeconds;
+        var reportedProgress = 0.0;
+        void ReportProgress(double value)
+        {
+            reportedProgress = Math.Clamp(Math.Max(reportedProgress, value), 0, 1);
+            progress?.Report(reportedProgress);
+        }
 
         var segmenter = new SpeechSegmenter(_vadFactory(), _speaker) { Trace = Trace };
         var pending = new Queue<Utterance>();
@@ -60,15 +67,17 @@ public sealed class FileTranscriber
                 fed += TimeSpan.FromSeconds((double)read / sampleRate);
                 if (totalSeconds > 0)
                 {
-                    progress?.Report(0.5 * fed.TotalSeconds / totalSeconds);
+                    ReportProgress(0.5 * fed.TotalSeconds / totalSeconds);
                 }
 
-                transcribedUntil = await DrainAsync(pending, segments, totalSeconds, transcribedUntil, progress, cancellationToken);
+                transcribedUntil = await DrainAsync(pending, segments, totalSeconds, transcribedUntil, ReportProgress, cancellationToken);
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             segmenter.Flush();
-            transcribedUntil = await DrainAsync(pending, segments, totalSeconds, transcribedUntil, progress, cancellationToken);
-            progress?.Report(1);
+            await DrainAsync(pending, segments, totalSeconds, transcribedUntil, ReportProgress, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            ReportProgress(1);
             return segments;
         }
         finally
@@ -83,7 +92,7 @@ public sealed class FileTranscriber
         List<TranscriptSegment> segments,
         double totalSeconds,
         TimeSpan transcribedUntil,
-        IProgress<double>? progress,
+        Action<double> reportProgress,
         CancellationToken cancellationToken)
     {
         while (pending.Count > 0)
@@ -103,7 +112,7 @@ public sealed class FileTranscriber
 
             if (totalSeconds > 0)
             {
-                progress?.Report(0.5 + 0.5 * transcribedUntil.TotalSeconds / totalSeconds);
+                reportProgress(0.5 + 0.5 * transcribedUntil.TotalSeconds / totalSeconds);
             }
         }
 

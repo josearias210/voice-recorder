@@ -126,6 +126,32 @@ public class FileTranscriberTests
     }
 
     [Fact]
+    public async Task TranscribeAsync_Archivo_Largo_No_Hace_Retroceder_El_Progreso()
+    {
+        using var source = new FakeSampleSource(Audio(70));
+        var progress = new CollectingProgress();
+        var transcriber = new FileTranscriber(new FakeFileEngine(), () => new AlwaysVoiceVad());
+
+        await transcriber.TranscribeAsync(source, progress, CancellationToken.None);
+
+        Assert.All(progress.Reports, value => Assert.InRange(value, 0, 1));
+        Assert.True(progress.Reports.SequenceEqual(progress.Reports.OrderBy(value => value)));
+        Assert.Equal(1, progress.Reports.Last());
+    }
+
+    [Fact]
+    public async Task TranscribeAsync_Archivo_Vacio_Cancelado_No_Se_Completa()
+    {
+        using var source = new FakeSampleSource([]);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        var transcriber = new FileTranscriber(new FakeFileEngine(), () => new AlwaysVoiceVad());
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            transcriber.TranscribeAsync(source, null, cancellation.Token));
+    }
+
+    [Fact]
     public async Task TranscribeAsync_Audio_Corto_Emite_Utterance_Al_Flush()
     {
         using var source = new FakeSampleSource(Audio(3));

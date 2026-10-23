@@ -145,8 +145,8 @@ public partial class App : System.Windows.Application
         DispatcherInvoke(() =>
         {
             var vm = _mainWindow?.ViewModel;
-            var recording = vm?.State is Core.SessionState.Recording or Core.SessionState.Paused;
-            _menuItemStart.Enabled = vm is { State: Core.SessionState.Idle or Core.SessionState.Stopped };
+            _menuItemStart.Enabled = vm?.CanStart == true;
+            var recording = vm is { State: Core.SessionState.Recording or Core.SessionState.Paused, IsFinalizing: false };
             _menuItemPause.Enabled = recording;
             _menuItemStop.Enabled = recording;
             if (_trayIcon is not null && vm is not null)

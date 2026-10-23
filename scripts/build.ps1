@@ -18,6 +18,13 @@ param(
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 
+if ($VpkVersion) {
+    if ($Version -and $Version -ne $VpkVersion) {
+        throw "Version y VpkVersion deben coincidir para empaquetar los mismos binarios."
+    }
+    $Version = $VpkVersion
+}
+
 $versionArgs = @()
 if ($Version) {
     $versionArgs += "-p:Version=$Version"
