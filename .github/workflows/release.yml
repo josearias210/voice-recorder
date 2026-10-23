@@ -71,6 +71,7 @@ jobs:
       - name: Pack (installer + update packages)
         run: >
           vpk pack
+          --runtime win-x64
           --packId VoiceRecorder
           --packVersion ${{ steps.version.outputs.version }}
           --packDir publish

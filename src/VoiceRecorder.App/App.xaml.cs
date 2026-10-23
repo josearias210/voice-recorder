@@ -29,9 +29,6 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
-        // Hooks de Velopack: SIEMPRE primero (instalación, updates, desinstalación).
-        Velopack.VelopackApp.Build().Run();
-
         base.OnStartup(e);
 
         // Instancia única: si ya hay otra, la despertamos y salimos.

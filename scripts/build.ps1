@@ -45,6 +45,7 @@ if ($LASTEXITCODE -ne 0) {
 if ($VpkVersion) {
     Write-Host "== Empaquetando Velopack v$VpkVersion..." -ForegroundColor Cyan
     vpk pack `
+        --runtime $Runtime `
         --packId VoiceRecorder `
         --packVersion $VpkVersion `
         --packDir "$root/publish" `
