@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Windows;
 using VoiceRecorder.App.Services;
 using VoiceRecorder.App.ViewModels;
