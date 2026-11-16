@@ -51,9 +51,8 @@ public abstract class WasapiCaptureServiceBase : IAudioCaptureService
 
             _capture = CreateCapture(_device);
             var format = _capture.WaveFormat;
-            _sourceBuffer = new BufferedWaveProvider(format)
+            _sourceBuffer = new BufferedWaveProvider(format, TimeSpan.FromSeconds(SourceBufferSeconds))
             {
-                BufferDuration = TimeSpan.FromSeconds(SourceBufferSeconds),
                 ReadFully = false,
                 DiscardOnBufferOverflow = true,
             };
