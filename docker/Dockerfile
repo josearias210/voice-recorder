@@ -9,7 +9,7 @@
 # Etiquetas literales para que Dependabot pueda proponer actualizaciones.
 FROM mcr.microsoft.com/dotnet/runtime:8.0 AS runtime
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0
+FROM mcr.microsoft.com/dotnet/sdk:11.0
 
 # Añade el runtime .NET 8 junto al del SDK (se usa para ejecutar los tests net8.0).
 COPY --from=runtime /usr/share/dotnet/shared/Microsoft.NETCore.App /usr/share/dotnet/shared/Microsoft.NETCore.App
