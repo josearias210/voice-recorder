@@ -27,7 +27,7 @@ Solo en estos tres casos, y nunca con contenido de tus conversaciones:
 
 1. **Descarga de modelos** (la inicias tú): el modelo Whisper se descarga desde Hugging Face y el modelo Silero VAD desde GitHub (versión fijada y verificada por SHA256). Se hace una única vez por modelo.
 2. **Comprobación de actualizaciones**: si instalaste la app con el instalador, unos segundos tras arrancar (o cuando pulsas *Buscar actualizaciones*) se consulta GitHub Releases para saber si hay una versión nueva (petición HTTPS estándar: tu IP y cabeceras habituales, sujeta a la [política de privacidad de GitHub](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement)). Solo se descarga una actualización si pulsas *Actualizar y reiniciar*. Las builds portable no comprueban actualizaciones.
-3. **Instalación vía gestores de paquetes**: winget o scoop descargan los instalables desde GitHub Releases.
+3. **Instalación vía gestores de paquetes**: Scoop descarga los instalables desde GitHub Releases.
 
 El autor de la aplicación **no opera ningún servidor** y no recibe ningún dato tuyo: estas descargas van directamente a GitHub o Hugging Face.
 

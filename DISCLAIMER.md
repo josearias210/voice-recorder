@@ -57,7 +57,7 @@ Si, pese a lo anterior, una ley aplicable no permitiera excluir totalmente la re
 
 ## 8. Componentes y canales de terceros
 
-La aplicación incorpora software de terceros (Whisper.cpp / Whisper.net, Silero VAD, NAudio, OnnxRuntime, SQLite, Velopack) con sus propias licencias, y se distribuye a través de servicios de terceros (GitHub Releases, winget, Scoop). El autor no ejerce control sobre ellos ni ofrece garantía adicional. Los modelos de transcripción se descargan de sus fuentes oficiales; el modelo VAD se verifica por SHA256.
+La aplicación incorpora software de terceros (Whisper.cpp / Whisper.net, Silero VAD, NAudio, OnnxRuntime, SQLite, Velopack) con sus propias licencias, y se distribuye a través de servicios de terceros (GitHub Releases y Scoop). El autor no ejerce control sobre ellos ni ofrece garantía adicional. Los modelos de transcripción se descargan de sus fuentes oficiales; el modelo VAD se verifica por SHA256.
 
 ## 9. Cambios en este aviso
 

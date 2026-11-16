@@ -46,15 +46,12 @@ La app **se actualiza sola**: al arrancar comprueba si hay una versión nueva y 
 ### Gestores de paquetes
 
 ```powershell
-# winget (requiere que Microsoft haya aprobado el alta del paquete)
-winget install Josearias210.VoiceRecorder
-
 # scoop (bucket de la comunidad del proyecto)
 scoop bucket add josearias210 https://github.com/josearias210/voice-recorder
 scoop install voice-recorder
 ```
 
-> El alta en winget está pendiente de publicación en su catálogo. El instalador de GitHub Releases está disponible directamente. La auto-actualización integrada requiere una instalación con Setup; no está disponible en el portable ni en Scoop.
+> Los canales de instalación son GitHub Releases (Setup y portable) y Scoop. La auto-actualización integrada requiere una instalación con Setup; no está disponible en el portable ni en Scoop.
 
 ### Portable
 
@@ -133,8 +130,7 @@ tools/CaptureVerifier           · Verifica captura de audio (Fase 1)
 tools/PipelineVerifier          · Verificación E2E del pipeline
 tests/VoiceRecorder.Tests       · Tests unitarios
 bucket/                         · Manifest de scoop (se actualiza en cada release)
-winget/                         · Manifests de winget (validados con winget validate)
-scripts/                        · Build/publish + alta en winget
+scripts/                        · Build/publish y tareas Docker
 ```
 
 ## 🗺️ Roadmap
@@ -171,7 +167,6 @@ dotnet run --project tools/CaptureVerifier -- 6     # probar captura de audio
 dotnet run --project tools/PipelineVerifier -- 12 es   # E2E del pipeline (usa TTS)
 .\scripts\build.ps1                    # publish + zip portable
 .\scripts\build.ps1 -VpkVersion 0.9.2  # + paquetes Velopack para probar updates en local
-.\scripts\publish-winget.ps1 -Version x.y.z  # alta/actualización en winget (tras release)
 ```
 
 #### Probar el flujo de actualización en local
