@@ -40,6 +40,12 @@ public partial class MainWindow : Window
 
     private void OpenSession_Click(object sender, RoutedEventArgs e) => OpenSelectedSession();
 
+    private void LegalNotice_Click(object sender, RoutedEventArgs e) =>
+        Services.LegalNotice.OpenDocument("DISCLAIMER.md");
+
+    private void Privacy_Click(object sender, RoutedEventArgs e) =>
+        Services.LegalNotice.OpenDocument("PRIVACY.md");
+
     private void OpenSelectedSession()
     {
         if (HistoryList.SelectedItem is not SessionRowVm row)

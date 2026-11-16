@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\VoiceRecorder.Core\VoiceRecorder.Core.csproj" />
+    <InternalsVisibleTo Include="VoiceRecorder.Tests" />
   </ItemGroup>
 
   <ItemGroup>

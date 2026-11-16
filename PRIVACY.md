@@ -1,6 +1,6 @@
 # 🔒 Política de privacidad — Voice Recorder
 
-> Última actualización: 14 de octubre de 2026 · Aplica a partir de la versión 1.2.0
+> Última actualización: 2026-11-16 · Aplica a partir de la versión 1.3.1
 
 **En una frase:** Voice Recorder procesa todo el audio **en tu equipo**; el texto y el audio nunca salen de tu disco salvo cuando tú decides descargar un modelo o aceptar una actualización.
 
@@ -15,7 +15,7 @@ Todo se almacena localmente en tu perfil de usuario (`%LOCALAPPDATA%\VoiceRecord
 | Ruta | Contenido | Cuándo |
 |------|-----------|--------|
 | `sessions.db` | Sesiones guardadas: título, fecha, duración, etiquetas, notas y los **textos** transcritos con sus marcas de tiempo. | Al pulsar *Detener* o al importar archivos. |
-| `settings.json` | Preferencias: modelo, idioma, micrófono seleccionado y modo de grabación. | Siempre que cambias un ajuste. |
+| `settings.json` | Preferencias: modelo, idioma, micrófono seleccionado, modo de grabación y la versión del aviso legal que aceptaste. | Siempre que cambias un ajuste o aceptas el aviso. |
 | `models\` | Los modelos de transcripción y VAD que descargues. | Al descargarlos desde la app. |
 | `audio\` | Grabaciones WAV del micrófono y de la llamada, **solo si activas el modo «Grabar audio y transcribir al detener»** (opcional, desactivado por defecto). | Solo en ese modo; las rutas quedan anotadas en las notas de la sesión. |
 
@@ -25,9 +25,11 @@ En el modo por defecto (transcripción en vivo) el audio **vive únicamente en m
 
 Solo en estos tres casos, y nunca con contenido de tus conversaciones:
 
-1. **Descarga de modelos** (la inicias tú): el modelo Whisper se descarga desde Hugging Face y el modelo Silero VAD desde GitHub. Se hace una única vez por modelo.
-2. **Comprobación de actualizaciones**: si instalaste la app con el instalador, unos segundos tras arrancar se consulta GitHub Releases para saber si hay una versión nueva (petición HTTPS estándar: tu IP y cabeceras habituales). Solo se descarga una actualización si pulsas *Actualizar*. Las builds portable no comprueban actualizaciones.
+1. **Descarga de modelos** (la inicias tú): el modelo Whisper se descarga desde Hugging Face y el modelo Silero VAD desde GitHub (versión fijada y verificada por SHA256). Se hace una única vez por modelo.
+2. **Comprobación de actualizaciones**: si instalaste la app con el instalador, unos segundos tras arrancar (o cuando pulsas *Buscar actualizaciones*) se consulta GitHub Releases para saber si hay una versión nueva (petición HTTPS estándar: tu IP y cabeceras habituales, sujeta a la [política de privacidad de GitHub](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement)). Solo se descarga una actualización si pulsas *Actualizar y reiniciar*. Las builds portable no comprueban actualizaciones.
 3. **Instalación vía gestores de paquetes**: winget o scoop descargan los instalables desde GitHub Releases.
+
+El autor de la aplicación **no opera ningún servidor** y no recibe ningún dato tuyo: estas descargas van directamente a GitHub o Hugging Face.
 
 La aplicación **no incluye telemetría, analytics, informes de fallos, publicidad ni rastreadores** de ningún tipo. Ninguna parte de tus transcripciones, notas, audio ni metadatos se envía a ningún servidor.
 
@@ -42,7 +44,11 @@ La aplicación **no incluye telemetría, analytics, informes de fallos, publicid
 - **Grabaciones del modo «grabar primero»**: borra los archivos en `%LOCALAPPDATA%\VoiceRecorder\audio`.
 - **Todo de golpe**: desinstala la app y borra la carpeta `%LOCALAPPDATA%\VoiceRecorder`. No se guarda nada fuera de esa carpeta.
 
-## 6. Componentes de terceros
+## 6. Quién es responsable de los datos
+
+Las transcripciones, notas y grabaciones se generan y guardan **solo en tu equipo**. Si contienen datos de otras personas, **tú eres el responsable de su tratamiento** (por ejemplo, a efectos del RGPD) y de contar con su consentimiento o una base legal. El autor no tiene acceso a ellos. Ver [DISCLAIMER.md](DISCLAIMER.md).
+
+## 7. Componentes de terceros
 
 La app usa bibliotecas open source que se ejecutan localmente: Whisper.net (whisper.cpp), Microsoft ML OnnxRuntime (Silero VAD), NAudio (WASAPI), Microsoft.Data.Sqlite y Velopack (auto-actualización). Sus licencias están en los paquetes NuGet correspondientes. Ver [DISCLAIMER.md](DISCLAIMER.md) para la exención de responsabilidad.
 

@@ -66,6 +66,11 @@ public partial class App : System.Windows.Application
         var themes = new ThemeService();
         themes.Initialize();
         var settings = new SettingsService();
+        if (!EnsureLegalNoticeAccepted(settings))
+        {
+            Shutdown();
+            return;
+        }
 
         var viewModel = new MainViewModel(_store, models, new WasapiDeviceEnumerator(), themes, settings);
         _mainWindow = new MainWindow(viewModel, _store);
@@ -93,6 +98,34 @@ public partial class App : System.Windows.Application
         _ = viewModel.CheckForUpdatesDelayedAsync();
     }
 
+    /// <summary>
+    /// Muestra el aviso legal la primera vez (o cuando cambia su versión) y
+    /// guarda la aceptación. Devuelve false si el usuario no la acepta.
+    /// </summary>
+    private static bool EnsureLegalNoticeAccepted(SettingsService settings)
+    {
+        settings.Load();
+        if (!LegalNotice.RequiresAcceptance(settings.AcceptedLegalNoticeVersion))
+        {
+            return true;
+        }
+
+        var answer = System.Windows.MessageBox.Show(
+            LegalNotice.Summary,
+            LegalNotice.Title,
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Information,
+            MessageBoxResult.No);
+        if (answer != MessageBoxResult.Yes)
+        {
+            return false;
+        }
+
+        settings.AcceptedLegalNoticeVersion = LegalNotice.Version;
+        settings.Save();
+        return true;
+    }
+
     private static void InitTray(MainViewModel viewModel)
     {
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
@@ -108,6 +141,9 @@ public partial class App : System.Windows.Application
         _menuItemPause = (WinForms.ToolStripMenuItem)menu.Items.Add("⏸ Pausar / Reanudar", null, (_, _) => DispatcherInvoke(() => viewModel.PauseResumeCommand.Execute(null)));
         _menuItemStop = (WinForms.ToolStripMenuItem)menu.Items.Add("■ Detener", null, (_, _) => DispatcherInvoke(() => viewModel.StopCommand.Execute(null)));
 
+        menu.Items.Add(new WinForms.ToolStripSeparator());
+        menu.Items.Add("Aviso legal", null, (_, _) => LegalNotice.OpenDocument("DISCLAIMER.md"));
+        menu.Items.Add("Privacidad", null, (_, _) => LegalNotice.OpenDocument("PRIVACY.md"));
         menu.Items.Add(new WinForms.ToolStripSeparator());
         menu.Items.Add("Salir", null, (_, _) => ((App)Current).ExitApplication());
 
