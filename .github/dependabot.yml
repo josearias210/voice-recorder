@@ -14,6 +14,10 @@ updates:
     groups:
       nuget-minor-patch:
         update-types: [minor, patch]
+    ignore:
+      # System.Speech 11+ exige net10.0 o superior; el proyecto apunta a net8.0.
+      - dependency-name: System.Speech
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: "/"
@@ -32,3 +36,10 @@ updates:
       interval: monthly
     commit-message:
       prefix: "chore(docker)"
+    ignore:
+      # El runtime debe coincidir con el TargetFramework (net8.0) y el SDK con
+      # el que usa el CI (10.0.x): las versiones mayores se cambian a mano.
+      - dependency-name: dotnet/runtime
+        update-types: [version-update:semver-major]
+      - dependency-name: dotnet/sdk
+        update-types: [version-update:semver-major]
