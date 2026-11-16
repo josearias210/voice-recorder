@@ -29,8 +29,14 @@ public sealed class ModelManager
 
     private readonly string _modelsDir;
 
-    private const string SileroVadOnnxUrl =
-        "https://github.com/snakers4/silero-vad/raw/master/src/silero_vad/data/silero_vad.onnx";
+    /// <summary>
+    /// Silero VAD v5 fijado a una etiqueta (no a "master", que cambia de modelo)
+    /// y verificado por SHA256 para garantizar la integridad de la descarga.
+    /// </summary>
+    internal const string SileroVadOnnxUrl =
+        "https://github.com/snakers4/silero-vad/raw/v5.1.2/src/silero_vad/data/silero_vad.onnx";
+
+    internal const string SileroVadSha256 = "2623a2953f6ff3d2c1e61740c6cdb7168133479b267dfef114a4a3cc5bdd788f";
 
     public ModelManager(string? modelsDir = null)
     {
@@ -80,15 +86,21 @@ public sealed class ModelManager
 
         using var http = new HttpClient();
         await using var stream = await http.GetStreamAsync(SileroVadOnnxUrl, cancellationToken);
-        await DownloadToFileAsync(stream, VadModelPath, progress: null, cancellationToken);
+        await DownloadToFileAsync(stream, VadModelPath, progress: null, cancellationToken, SileroVadSha256);
         return VadModelPath;
     }
 
-    private static async Task DownloadToFileAsync(
+    /// <summary>
+    /// Copia <paramref name="source"/> a <paramref name="destination"/> mediante un
+    /// archivo temporal. Si se indica <paramref name="expectedSha256"/> y no coincide,
+    /// borra la descarga y lanza <see cref="InvalidDataException"/>.
+    /// </summary>
+    internal static async Task DownloadToFileAsync(
         Stream source,
         string destination,
         IProgress<double>? progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? expectedSha256 = null)
     {
         var tempPath = destination + ".download";
         await using (var target = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
@@ -110,6 +122,23 @@ public sealed class ModelManager
             if (total > 0)
             {
                 progress?.Report(1);
+            }
+        }
+
+        if (expectedSha256 is not null)
+        {
+            string actual;
+            await using (var downloaded = File.OpenRead(tempPath))
+            {
+                actual = Convert.ToHexString(
+                    await System.Security.Cryptography.SHA256.HashDataAsync(downloaded, cancellationToken));
+            }
+
+            if (!actual.Equals(expectedSha256, StringComparison.OrdinalIgnoreCase))
+            {
+                File.Delete(tempPath);
+                throw new InvalidDataException(
+                    $"La descarga de {Path.GetFileName(destination)} no supera la verificación de integridad (SHA256).");
             }
         }
 

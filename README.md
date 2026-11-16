@@ -16,6 +16,8 @@ Meet · Teams · Zoom · WhatsApp Web · Discord — si suena en tu PC, se trans
 
 **[English below](#english)** · Aplicación de escritorio para **Windows** que transcribe **en vivo** las conversaciones de **cualquier app de llamadas**, sin drivers virtuales, sin nube y **sin guardar el audio**: solo la transcripción.
 
+> ⚖️ **Aviso legal**: software gratuito ofrecido **«tal cual», sin garantías**. El autor **no se hace responsable** del uso que se haga de la aplicación ni de sus consecuencias: **cada usuario es el único responsable** de cumplir la ley y de obtener el consentimiento de las personas que participan en una conversación antes de grabarla o transcribirla. La app pide aceptar este aviso al abrirse por primera vez. Lee el [aviso legal completo](DISCLAIMER.md) y la [política de privacidad](PRIVACY.md).
+
 ## ✨ Características
 
 - 🔌 **Universal**: captura el audio a nivel de sistema (WASAPI Loopback + micrófono). No depende de Meet, Teams, Zoom ni de ninguna app concreta.

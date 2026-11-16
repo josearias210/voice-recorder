@@ -277,6 +277,12 @@
                 <Button Content="Buscar actualizaciones" Command="{Binding CheckForUpdatesCommand}"
                         Style="{StaticResource SecondaryButton}" Padding="10,3" Margin="10,0,0,0" FontSize="12"
                         ToolTip="Comprueba ahora si hay una versión nueva en GitHub Releases" />
+                <Button Content="Aviso legal" Click="LegalNotice_Click"
+                        Style="{StaticResource SecondaryButton}" Padding="10,3" Margin="6,0,0,0" FontSize="12"
+                        ToolTip="Exención de responsabilidad y condiciones de uso (DISCLAIMER.md)" />
+                <Button Content="Privacidad" Click="Privacy_Click"
+                        Style="{StaticResource SecondaryButton}" Padding="10,3" Margin="6,0,0,0" FontSize="12"
+                        ToolTip="Qué datos se guardan y cuándo se usa la red (PRIVACY.md)" />
             </StackPanel>
             <StackPanel>
                 <ProgressBar Height="4" Minimum="0" Maximum="1" Value="{Binding DownloadPercent, Mode=OneWay}"

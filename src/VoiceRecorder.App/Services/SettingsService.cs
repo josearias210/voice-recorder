@@ -4,7 +4,12 @@ using System.Text.Json;
 namespace VoiceRecorder.App.Services;
 
 /// <summary>DTO de serialización (record con constructor posicional, compatible con STJ).</summary>
-internal sealed record SettingsData(string? ModelFileName, string? LanguageCode, string? MicrophoneId, bool RecordAudioFirst = false);
+internal sealed record SettingsData(
+    string? ModelFileName,
+    string? LanguageCode,
+    string? MicrophoneId,
+    bool RecordAudioFirst = false,
+    string? AcceptedLegalNoticeVersion = null);
 
 /// <summary>
 /// Preferencias de usuario persistidas en %LOCALAPPDATA%\VoiceRecorder\settings.json
@@ -36,6 +41,9 @@ public sealed class SettingsService
     /// </summary>
     public bool RecordAudioFirst { get; set; }
 
+    /// <summary>Versión del aviso legal (<see cref="LegalNotice.Version"/>) que el usuario aceptó.</summary>
+    public string? AcceptedLegalNoticeVersion { get; set; }
+
     /// <summary>Carga las preferencias; si el archivo falta o está corrupto, quedan los valores por defecto.</summary>
     public void Load()
     {
@@ -56,6 +64,7 @@ public sealed class SettingsService
             LanguageCode = data.LanguageCode;
             MicrophoneId = data.MicrophoneId;
             RecordAudioFirst = data.RecordAudioFirst;
+            AcceptedLegalNoticeVersion = data.AcceptedLegalNoticeVersion;
         }
         catch
         {
@@ -69,7 +78,7 @@ public sealed class SettingsService
         try
         {
             File.WriteAllText(_filePath, JsonSerializer.Serialize(
-                new SettingsData(ModelFileName, LanguageCode, MicrophoneId, RecordAudioFirst),
+                new SettingsData(ModelFileName, LanguageCode, MicrophoneId, RecordAudioFirst, AcceptedLegalNoticeVersion),
                 JsonOptions));
         }
         catch
