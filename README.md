@@ -147,6 +147,23 @@ scripts/                        · Build/publish + alta en winget
 
 ## 🛠️ Desarrollo
 
+### Con Docker (sin instalar nada)
+
+Solo necesitas [Docker Desktop](https://www.docker.com/products/docker-desktop/) en modo contenedores Linux. No hace falta instalar .NET:
+
+```powershell
+.\scripts\docker.ps1 test      # pruebas multiplataforma (núcleo, transcripción, SQLite)
+.\scripts\docker.ps1 build     # compila toda la solución, incluida la app WPF, con -warnaserror
+.\scripts\docker.ps1 run       # genera la app portable y la abre (artifacts\docker-publish\VoiceRecorder.exe)
+.\scripts\docker.ps1 all       # build + test + formato + lint de workflows + escaneo de secretos
+```
+
+Otras tareas: `publish` (solo genera la app), `format`, `lint`, `secrets`, `shell` (terminal en el contenedor) y `clean`. Sin el script: `docker compose run --rm test`.
+
+> La app es de Windows (WPF + WASAPI): se **compila** en Docker y se **ejecuta** en tu Windows desde la carpeta generada (autocontenida, sin instalar .NET). Las pruebas que dependen de WPF/WASAPI corren en el CI de Windows.
+
+### Con el SDK de .NET
+
 ```powershell
 dotnet build VoiceRecorder.slnx        # compilar
 dotnet test                            # tests unitarios

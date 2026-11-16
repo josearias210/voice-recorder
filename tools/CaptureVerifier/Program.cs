@@ -1,4 +1,4 @@
-﻿using VoiceRecorder.Audio;
+using VoiceRecorder.Audio;
 using VoiceRecorder.Core;
 
 // Verificación de Fase 1: captura dual (micrófono + loopback) durante N segundos

@@ -1,0 +1,75 @@
+# Tareas de desarrollo en contenedores. Todas montan el repositorio en /src.
+# Atajo recomendado:  .\scripts\docker.ps1 <tarea>
+# Equivalente directo: docker compose run --rm <tarea>
+
+x-dotnet: &dotnet
+  build:
+    context: docker
+  image: voice-recorder-dev:local
+  volumes:
+    - .:/src
+    - nuget:/root/.nuget/packages
+    - artifacts:/artifacts
+  working_dir: /src
+
+services:
+  # Compila toda la solución (incluida la app WPF) con -warnaserror, como el CI.
+  build:
+    <<: *dotnet
+    command: dotnet build VoiceRecorder.slnx -c Release -warnaserror
+
+  # Pruebas multiplataforma (núcleo, transcripción y almacenamiento).
+  # Las pruebas de WPF/WASAPI necesitan Windows y se ejecutan en el CI.
+  test:
+    <<: *dotnet
+    command: >-
+      dotnet test tests/VoiceRecorder.Tests.Portable -c Release
+      --logger "console;verbosity=normal"
+      --logger "trx;LogFileName=portable.trx" --results-directory /src/artifacts/test-results
+
+  # Genera la app portable para Windows (self-contained, no requiere .NET instalado)
+  # en artifacts/docker-publish. Ejecuta VoiceRecorder.exe desde esa carpeta.
+  publish:
+    <<: *dotnet
+    command: >-
+      dotnet publish src/VoiceRecorder.App/VoiceRecorder.App.csproj
+      -c Release -r win-x64 --self-contained true
+      -o /src/artifacts/docker-publish
+
+  # Comprueba el formato del código (.editorconfig) sin modificar archivos.
+  # Trabaja sobre una copia con finales de línea LF: en Windows, git entrega
+  # CRLF en la copia de trabajo y daría miles de falsos ENDOFLINE.
+  format:
+    <<: *dotnet
+    command:
+      - sh
+      - -c
+      - >-
+        mkdir -p /tmp/w &&
+        tar -C /src --exclude=./.git --exclude=./artifacts -cf - . | tar -C /tmp/w -xf - &&
+        find /tmp/w -type f \( -name '*.cs' -o -name '*.csproj' -o -name '*.xaml' -o -name '*.props' -o -name '*.slnx' \) -exec sed -i 's/\r$$//' {} + &&
+        cd /tmp/w &&
+        dotnet format VoiceRecorder.slnx --verify-no-changes --verbosity minimal
+
+  # Lint de los workflows de GitHub Actions.
+  lint:
+    image: rhysd/actionlint:1.7.12
+    volumes:
+      - .:/repo:ro
+    working_dir: /repo
+    command: ["-no-color"]
+
+  # Busca claves o secretos en todo el historial de git.
+  secrets:
+    image: zricethezav/gitleaks:v8.24.3
+    volumes:
+      - .:/repo:ro
+    environment:
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: "*"
+    command: ["git", "/repo", "--redact", "--no-banner", "--exit-code", "1"]
+
+volumes:
+  nuget:
+  artifacts:

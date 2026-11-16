@@ -1,0 +1,50 @@
+name: Linux checks
+
+# Mismas tareas que `.\scripts\docker.ps1` en local: si pasan aquí, pasan en
+# Docker en tu máquina (y viceversa).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  docker-checks:
+    name: Docker (tests portables, formato, lint)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build de la imagen de desarrollo
+        run: docker compose build build
+
+      - name: Pruebas multiplataforma
+        run: docker compose run --rm test
+
+      - name: Formato (.editorconfig)
+        run: docker compose run --rm format
+
+      - name: Lint de workflows (actionlint)
+        run: docker compose run --rm lint
+
+      - name: Build completo desde Linux (EnableWindowsTargeting)
+        run: docker compose run --rm build
+
+      - name: Subir resultados de tests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-test-results-${{ github.sha }}
+          path: artifacts/test-results/*.trx
+          retention-days: 14
+          if-no-files-found: warn

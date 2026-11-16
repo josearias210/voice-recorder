@@ -6,12 +6,20 @@
 
 1. **Abre un issue** antes de cambios grandes (features, refactors) para alinear el diseño.
 2. Haz fork y crea una rama descriptiva: `feat/transcripcion-bilingue`, `fix/vad-ruido-fondo`, …
-3. Asegúrate de que compila y pasa los tests:
+3. Asegúrate de que compila y pasa los tests. Con Docker (no requiere instalar .NET):
+
+   ```powershell
+   .\scripts\docker.ps1 all
+   ```
+
+   O con el SDK de .NET 10 instalado:
 
    ```powershell
    dotnet build VoiceRecorder.slnx
    dotnet test
    ```
+
+   Si añades tests que no usan WPF/WASAPI/NAudio, inclúyelos también en `tests/VoiceRecorder.Tests.Portable/VoiceRecorder.Tests.Portable.csproj` para que corran en Docker y en el CI de Linux.
 
 4. Envía un Pull Request describiendo el *qué* y el *por qué*.
 
@@ -31,6 +39,17 @@
 
 - **Commits**: [Conventional Commits](https://www.conventionalcommits.org/es/) (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`).
 - **Tests**: la lógica nueva (segmentación, exportación, persistencia) debe llevar tests unitarios. Los verificadores de hardware (`tools/*`) no se ejecutan en CI por requerir dispositivos de audio.
+
+## Automatizaciones del repositorio
+
+| Workflow | Cuándo | Qué hace |
+|----------|--------|----------|
+| `CI` | push y PR a `main` | Escaneo de secretos, build + tests completos en Windows, portable de prueba |
+| `Linux checks` | push y PR a `main` | Pruebas portables, formato, actionlint y build de la imagen Docker de desarrollo |
+| `CodeQL` | push, PR y semanal | Análisis de seguridad del código C# |
+| `Dependency review` | PR | Bloquea dependencias nuevas con vulnerabilidades conocidas |
+| `Release` | etiqueta `vX.Y.Z` | Instalador, portable, paquetes de actualización, GitHub Release y Scoop |
+| Dependabot | semanal | PRs para actualizar paquetes NuGet, acciones y la imagen Docker |
 
 ## Reportar bugs
 
