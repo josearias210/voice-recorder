@@ -99,6 +99,8 @@ public partial class App : System.Windows.Application
         var icon = File.Exists(iconPath) ? new System.Drawing.Icon(iconPath) : System.Drawing.SystemIcons.Application;
 
         var menu = new WinForms.ContextMenuStrip();
+        menu.Items.Add(new WinForms.ToolStripMenuItem($"Voice Recorder v{AppInfo.Version}") { Enabled = false });
+        menu.Items.Add(new WinForms.ToolStripSeparator());
         menu.Items.Add("Mostrar ventana", null, (_, _) => ShowMainWindow());
 
         menu.Items.Add(new WinForms.ToolStripSeparator());
@@ -148,7 +150,7 @@ public partial class App : System.Windows.Application
             _menuItemStop.Enabled = recording;
             if (_trayIcon is not null && vm is not null)
             {
-                _trayIcon.Text = $"Voice Recorder · {stateText}";
+                _trayIcon.Text = $"Voice Recorder {AppInfo.Version} · {stateText}";
             }
         });
     }

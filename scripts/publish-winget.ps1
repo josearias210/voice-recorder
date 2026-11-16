@@ -44,17 +44,37 @@ $newDir = "$baseDir/$Version"
 New-Item -ItemType Directory -Force -Path $newDir | Out-Null
 Copy-Item "$($templateDir.FullName)/*.yaml" $newDir -Force
 
-# 2) Descargar el instalador del release y calcular su hash
-$tmpInstaller = Join-Path $env:TEMP "winget-setup-$Version.exe"
-Write-Host "== Descargando instalador..." -ForegroundColor Cyan
-curl.exe -sL -o $tmpInstaller $url
-if ($LASTEXITCODE -ne 0 -or -not (Test-Path $tmpInstaller)) {
-    throw "No se pudo descargar $url"
+# 2) SHA256 del instalador: primero desde el digest que publica GitHub para
+#    cada asset (sin descargar ~100 MB); si no está, se descarga y se calcula.
+$hash = $null
+$today = Get-Date -Format "yyyy-MM-dd"
+try {
+    $release = Invoke-RestMethod "https://api.github.com/repos/josearias210/voice-recorder/releases/tags/v$Version"
+    $asset = $release.assets | Where-Object name -eq 'VoiceRecorder-win-Setup.exe' | Select-Object -First 1
+    if ($asset.digest -match '^sha256:([0-9a-f]{64})$') {
+        $hash = $Matches[1]
+    }
+    if ($release.published_at) {
+        $today = ([datetime]$release.published_at).ToString("yyyy-MM-dd")
+    }
+}
+catch {
+    Write-Warning "No se pudo consultar la API de GitHub: $($_.Exception.Message)"
 }
 
-$hash = (Get-FileHash $tmpInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
-$today = Get-Date -Format "yyyy-MM-dd"
-Remove-Item $tmpInstaller -Force
+if (-not $hash) {
+    $tmpInstaller = Join-Path $env:TEMP "winget-setup-$Version.exe"
+    Write-Host "== Descargando instalador..." -ForegroundColor Cyan
+    curl.exe -sL -o $tmpInstaller $url
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $tmpInstaller)) {
+        throw "No se pudo descargar $url"
+    }
+
+    $hash = (Get-FileHash $tmpInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
+    Remove-Item $tmpInstaller -Force
+}
+
+Write-Host "== SHA256: $hash" -ForegroundColor Cyan
 
 # 3) Parchear manifests
 Get-ChildItem $newDir -Filter *.yaml | ForEach-Object {
@@ -63,6 +83,7 @@ Get-ChildItem $newDir -Filter *.yaml | ForEach-Object {
     $yaml = $yaml -replace '(?m)^InstallerUrl: .*$', "InstallerUrl: $url"
     $yaml = $yaml -replace '(?m)^InstallerSha256: .*$', "InstallerSha256: $hash"
     $yaml = $yaml -replace '(?m)^ReleaseDate: .*$', "ReleaseDate: $today"
+    $yaml = $yaml -replace '(?m)^(ReleaseNotesUrl: .*/tag/)v[^\s]+$', "`${1}v$Version"
     Set-Content $_.FullName $yaml -Encoding UTF8
 }
 

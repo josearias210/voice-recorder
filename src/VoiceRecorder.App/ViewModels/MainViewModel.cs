@@ -99,6 +99,7 @@ public sealed class MainViewModel : ViewModelBase
         CancelImportCommand = new RelayCommand(_ => _importCts?.Cancel(), _ => IsImporting);
         DownloadModelCommand = new AsyncRelayCommand(_ => DownloadModelAsync(), _ => CanDownloadModel);
         UpdateNowCommand = new AsyncRelayCommand(_ => UpdateNowAsync(), _ => UpdateAvailable && CanStart);
+        CheckForUpdatesCommand = new AsyncRelayCommand(_ => CheckForUpdatesAsync(manual: true), _ => CanStart && !_checkingUpdates);
         SearchCommand = new RelayCommand(_ => LoadHistory(SearchText));
     }
 
@@ -251,6 +252,19 @@ public sealed class MainViewModel : ViewModelBase
     public AsyncRelayCommand DownloadModelCommand { get; }
 
     public AsyncRelayCommand UpdateNowCommand { get; }
+
+    /// <summary>Busca actualizaciones a petición del usuario.</summary>
+    public AsyncRelayCommand CheckForUpdatesCommand { get; }
+
+    /// <summary>Versión instalada (por ejemplo, "1.3.0").</summary>
+    public string AppVersion => AppInfo.Version;
+
+    /// <summary>Texto de versión para la barra de estado: "v1.3.0 · instalada" o "v1.3.0 · portable".</summary>
+    public string VersionText => $"v{AppVersion} · {(_updates.IsSupported ? "instalada" : "portable")}";
+
+    public string WindowTitle => $"Voice Recorder {AppVersion} · Transcriptor de llamadas";
+
+    private bool _checkingUpdates;
 
     private bool _updateAvailable;
 
@@ -954,12 +968,38 @@ public sealed class MainViewModel : ViewModelBase
     /// <summary>Comprueba si hay actualizaciones y muestra el banner si las hay.</summary>
     public async Task CheckForUpdatesDelayedAsync()
     {
+        await Task.Delay(5000);
+        await CheckForUpdatesAsync(manual: false);
+    }
+
+    /// <summary>
+    /// Consulta GitHub Releases. En la comprobación automática los fallos se
+    /// ignoran; en la manual se informa al usuario del resultado.
+    /// </summary>
+    internal async Task CheckForUpdatesAsync(bool manual)
+    {
+        if (!_updates.IsSupported)
+        {
+            if (manual)
+            {
+                StatusText = $"Versión {AppVersion} (portable): las actualizaciones automáticas requieren instalar con Setup.";
+            }
+
+            return;
+        }
+
+        if (_checkingUpdates)
+        {
+            return;
+        }
+
+        _checkingUpdates = true;
+        CommandManager.InvalidateRequerySuggested();
         try
         {
-            await Task.Delay(5000);
-            if (!_updates.IsSupported)
+            if (manual)
             {
-                return;
+                StatusText = "Buscando actualizaciones…";
             }
 
             var info = await _updates.CheckAsync();
@@ -970,10 +1010,23 @@ public sealed class MainViewModel : ViewModelBase
                 UpdateAvailable = true;
                 StatusText = $"Actualización a v{version} disponible.";
             }
+            else if (manual)
+            {
+                StatusText = $"Tienes la última versión disponible (v{AppVersion}).";
+            }
         }
         catch
         {
-            // Sin red o fuente inaccesible: se ignora silenciosamente.
+            // Sin red o fuente inaccesible.
+            if (manual)
+            {
+                StatusText = "No se pudo comprobar si hay actualizaciones. Revisa tu conexión.";
+            }
+        }
+        finally
+        {
+            _checkingUpdates = false;
+            CommandManager.InvalidateRequerySuggested();
         }
     }
 

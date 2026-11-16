@@ -68,6 +68,17 @@ jobs:
       - name: Install Velopack CLI
         run: dotnet tool update --global vpk --version 1.2.158
 
+      # Descarga el último release publicado para que vpk pack genere el
+      # paquete delta (actualización incremental). Si no hay release previo,
+      # se continúa y solo se genera el paquete completo.
+      - name: Download previous release (for delta updates)
+        continue-on-error: true
+        run: >
+          vpk download github
+          --repoUrl https://github.com/${{ github.repository }}
+          --token ${{ secrets.GITHUB_TOKEN }}
+          --outputDir releases
+
       - name: Pack (installer + update packages)
         run: >
           vpk pack
@@ -91,6 +102,12 @@ jobs:
           foreach ($file in $required) {
             if (-not (Test-Path "releases/$file")) { throw "Falta el artefacto $file." }
           }
+          # Los nupkg de versiones anteriores solo sirven para calcular el delta;
+          # ya están publicados en su propio release y no se vuelven a subir.
+          Get-ChildItem releases -Filter *.nupkg |
+            Where-Object { $_.Name -notlike 'VoiceRecorder-${{ steps.version.outputs.version }}-*' } |
+            Remove-Item
+          Get-ChildItem releases -File | ForEach-Object { Write-Host "$($_.Name) ($($_.Length) bytes)" }
           $checksums = Get-ChildItem releases -File | Sort-Object Name | ForEach-Object {
             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
             "$hash  $($_.Name)"
@@ -111,8 +128,13 @@ jobs:
             url         = "https://github.com/josearias210/voice-recorder/releases/download/v$version/VoiceRecorder-win-Portable.zip"
             hash        = $hash
             bin         = "VoiceRecorder.exe"
-            shortcuts   = @(@("VoiceRecorder.exe", "Voice Recorder"))
+            # La coma evita que PowerShell aplane el array anidado: scoop espera [["exe","nombre"]].
+            shortcuts   = @(, @("VoiceRecorder.exe", "Voice Recorder"))
             notes       = "Version portable: para actualizar usa scoop update voice-recorder."
+            checkver    = "github"
+            autoupdate  = [ordered]@{
+              url = 'https://github.com/josearias210/voice-recorder/releases/download/v$version/VoiceRecorder-win-Portable.zip'
+            }
           }
           $manifest | ConvertTo-Json -Depth 5 | Set-Content -Path bucket/voice-recorder.json -Encoding UTF8
           git config user.name "github-actions[bot]"
