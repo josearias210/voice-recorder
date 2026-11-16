@@ -62,6 +62,23 @@ public class MainViewModelOptionsTests : IDisposable
     }
 
     [Fact]
+    public void Muestra_La_Version_De_La_App()
+    {
+        Assert.Equal(AppInfo.Version, _viewModel.AppVersion);
+        Assert.Equal($"v{AppInfo.Version} · portable", _viewModel.VersionText);
+        Assert.Contains(AppInfo.Version, _viewModel.WindowTitle);
+    }
+
+    [Fact]
+    public async Task Buscar_Actualizaciones_Sin_Instalacion_Explica_Que_Requiere_Setup()
+    {
+        await _viewModel.CheckForUpdatesAsync(manual: true);
+
+        Assert.Contains("Setup", _viewModel.StatusText);
+        Assert.False(_viewModel.UpdateAvailable);
+    }
+
+    [Fact]
     public void Preferencias_Guardadas_Se_Restauran_Al_Arrancar()
     {
         var settings = new SettingsService(_dataDir)

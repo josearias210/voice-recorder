@@ -37,7 +37,7 @@ Meet · Teams · Zoom · WhatsApp Web · Discord — si suena en tu PC, se trans
 
 Descarga `VoiceRecorder-win-Setup.exe` desde [Releases](../../releases/latest) y ejecútalo.
 
-La app **se actualiza sola**: al arrancar comprueba si hay una versión nueva y te ofrece *Actualizar y reiniciar* (descarga incremental, sin reinstalar).
+La app **se actualiza sola**: al arrancar comprueba si hay una versión nueva y te ofrece *Actualizar y reiniciar* (descarga incremental, sin reinstalar). También puedes pulsar **Buscar actualizaciones** en la barra inferior, donde se muestra la versión instalada (por ejemplo, `v1.3.0 · instalada`).
 
 > Requiere **Windows 10 2004+ / Windows 11** (64 bits). El modelo de transcripción se descarga dentro de la app (≈60 MB).
 

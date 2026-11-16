@@ -1,7 +1,7 @@
 <Window x:Class="VoiceRecorder.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Voice Recorder · Transcriptor de llamadas"
+        Title="{Binding WindowTitle, Mode=OneWay, FallbackValue='Voice Recorder · Transcriptor de llamadas'}"
         Height="720" Width="1180" MinHeight="560" MinWidth="940"
         WindowStartupLocation="CenterScreen"
         AllowDrop="True" DragOver="Window_DragOver" Drop="Window_Drop"
@@ -270,6 +270,14 @@
                     Style="{StaticResource SecondaryButton}" Padding="12,4" Margin="12,0,0,0"
                     VerticalAlignment="Center"
                     Visibility="{Binding IsImporting, Converter={StaticResource BoolToVis}}" />
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                <TextBlock Text="{Binding VersionText, Mode=OneWay}" FontSize="12" VerticalAlignment="Center"
+                           Foreground="{DynamicResource MutedBrush}"
+                           ToolTip="Versión de Voice Recorder" />
+                <Button Content="Buscar actualizaciones" Command="{Binding CheckForUpdatesCommand}"
+                        Style="{StaticResource SecondaryButton}" Padding="10,3" Margin="10,0,0,0" FontSize="12"
+                        ToolTip="Comprueba ahora si hay una versión nueva en GitHub Releases" />
+            </StackPanel>
             <StackPanel>
                 <ProgressBar Height="4" Minimum="0" Maximum="1" Value="{Binding DownloadPercent, Mode=OneWay}"
                              Visibility="{Binding DownloadVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,4" />
