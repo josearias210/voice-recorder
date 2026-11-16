@@ -7,7 +7,7 @@
 # Uso habitual:  .\scripts\docker.ps1 <build|test|publish|lint|secrets|all>
 
 # Etiquetas literales para que Dependabot pueda proponer actualizaciones.
-FROM mcr.microsoft.com/dotnet/runtime:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/runtime:11.0 AS runtime
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0
 
