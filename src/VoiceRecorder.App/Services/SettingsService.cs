@@ -34,9 +34,9 @@ public sealed class SettingsService
     public SettingsService(string? dataDir = null)
     {
         var dir = dataDir
-            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VoiceRecorder");
+            ?? Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VoiceRecorder");
         Directory.CreateDirectory(dir);
-        _filePath = Path.Combine(dir, "settings.json");
+        _filePath = Path.Join(dir, "settings.json");
     }
 
     public string? ModelFileName { get; set; }

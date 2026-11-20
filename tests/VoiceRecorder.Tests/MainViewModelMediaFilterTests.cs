@@ -14,7 +14,7 @@ public class MainViewModelMediaFilterTests
     [InlineData("documento.pdf", false)]
     public void IsMediaFile_Detecta_Por_Extension_Sin_Distinguir_Mayusculas(string fileName, bool expected)
     {
-        var path = Path.Combine(Path.GetTempPath(), fileName);
+        var path = Path.Join(Path.GetTempPath(), fileName);
 
         Assert.Equal(expected, MainViewModel.IsMediaFile(path));
     }

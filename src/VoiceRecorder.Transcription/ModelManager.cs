@@ -44,14 +44,14 @@ public sealed class ModelManager
         Directory.CreateDirectory(_modelsDir);
     }
 
-    public static string DefaultModelsDirectory => Path.Combine(
+    public static string DefaultModelsDirectory => Path.Join(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "VoiceRecorder",
         "models");
 
-    public string VadModelPath => Path.Combine(_modelsDir, "silero-vad-v5.onnx");
+    public string VadModelPath => Path.Join(_modelsDir, "silero-vad-v5.onnx");
 
-    public string GetPath(WhisperModelInfo model) => Path.Combine(_modelsDir, model.FileName);
+    public string GetPath(WhisperModelInfo model) => Path.Join(_modelsDir, model.FileName);
 
     public bool IsAvailable(WhisperModelInfo model) => File.Exists(GetPath(model));
 

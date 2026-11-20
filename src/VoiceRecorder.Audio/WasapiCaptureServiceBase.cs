@@ -68,6 +68,7 @@ public abstract class WasapiCaptureServiceBase : IAudioCaptureService
             _capture.RecordingStopped += OnRecordingStopped;
             _capture.StartRecording();
             _capturing = true;
+            _pollTimer?.Dispose();
             _pollTimer = new Timer(DrainBuffer, null, PollIntervalMs, PollIntervalMs);
         }
     }

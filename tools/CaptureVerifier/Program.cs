@@ -7,7 +7,7 @@ var seconds = args.Length > 0 && int.TryParse(args[0], out var s) && s is > 0 an
     ? s
     : 6;
 
-var outputDir = Path.Combine(Directory.GetCurrentDirectory(), "verification");
+var outputDir = Path.Join(Directory.GetCurrentDirectory(), "verification");
 Directory.CreateDirectory(outputDir);
 
 Console.WriteLine("=== Voice Recorder · Verificador de captura (Fase 1) ===");
@@ -64,7 +64,7 @@ lock (chunks)
     foreach (var (source, list) in chunks)
     {
         var name = source == AudioSource.Microphone ? "mic" : "loopback";
-        var path = Path.Combine(outputDir, $"{name}.wav");
+        var path = Path.Join(outputDir, $"{name}.wav");
         WavDumpWriter.Write(path, list);
 
         var totalSamples = list.Sum(c => (long)c.Samples.Length);

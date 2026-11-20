@@ -402,7 +402,7 @@ public sealed class BackupService : IDisposable
 
     private string ToLocalPath(string relativePath)
     {
-        var full = Path.GetFullPath(Path.Combine(_rootDirectory, relativePath.Replace('/', Path.DirectorySeparatorChar)));
+        var full = Path.GetFullPath(Path.Join(_rootDirectory, relativePath.Replace('/', Path.DirectorySeparatorChar)));
         if (!full.StartsWith(_rootDirectory + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException($"Ruta fuera de la carpeta de sesiones: {relativePath}");

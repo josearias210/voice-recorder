@@ -5,7 +5,7 @@ namespace VoiceRecorder.Tests;
 
 public class WavChunkWriterTests : IDisposable
 {
-    private readonly string _path = Path.Combine(Path.GetTempPath(), $"vr-wav-{Guid.NewGuid():N}.wav");
+    private readonly string _path = Path.Join(Path.GetTempPath(), $"vr-wav-{Guid.NewGuid():N}.wav");
 
     public void Dispose()
     {

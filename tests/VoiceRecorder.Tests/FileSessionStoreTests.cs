@@ -5,7 +5,7 @@ namespace VoiceRecorder.Tests;
 
 public sealed class FileSessionStoreTests : IDisposable
 {
-    private readonly string _root = Path.Combine(Path.GetTempPath(), $"vr-files-{Guid.NewGuid():N}");
+    private readonly string _root = Path.Join(Path.GetTempPath(), $"vr-files-{Guid.NewGuid():N}");
 
     public void Dispose()
     {
@@ -23,8 +23,8 @@ public sealed class FileSessionStoreTests : IDisposable
             [new TranscriptSegment(Speaker.Me, TimeSpan.Zero, TimeSpan.FromSeconds(2), "hola")]);
 
         var folder = store.GetSessionFolder(id)!;
-        Assert.Equal(Path.Combine(_root, "2026", "11", $"20261119-093005-{id:D5}"), folder);
-        Assert.True(File.Exists(Path.Combine(folder, FileSessionStore.SessionFileName)));
+        Assert.Equal(Path.Join(_root, "2026", "11", $"20261119-093005-{id:D5}"), folder);
+        Assert.True(File.Exists(Path.Join(folder, FileSessionStore.SessionFileName)));
     }
 
     [Fact]
@@ -77,15 +77,15 @@ public sealed class FileSessionStoreTests : IDisposable
         store.DeleteSession(id);
         Assert.Null(store.GetSession(id));
         Assert.Empty(store.ListSessions());
-        Assert.False(Directory.Exists(Path.Combine(_root, "2026")));
+        Assert.False(Directory.Exists(Path.Join(_root, "2026")));
     }
 
     [Fact]
     public void AttachFiles_Mueve_Archivos_A_La_Carpeta_Y_Actualiza_Notas()
     {
-        var tempDir = Path.Combine(_root, "..", $"vr-audio-{Guid.NewGuid():N}");
+        var tempDir = Path.Join(_root, "..", $"vr-audio-{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
-        var wav = Path.Combine(tempDir, "grabacion-micro.wav");
+        var wav = Path.Join(tempDir, "grabacion-micro.wav");
         File.WriteAllBytes(wav, [1, 2, 3]);
         try
         {
@@ -96,7 +96,7 @@ public sealed class FileSessionStoreTests : IDisposable
 
             var moved = Assert.Single(store.AttachFiles(id, [wav]));
 
-            Assert.Equal(Path.Combine(store.GetSessionFolder(id)!, "grabacion-micro.wav"), moved);
+            Assert.Equal(Path.Join(store.GetSessionFolder(id)!, "grabacion-micro.wav"), moved);
             Assert.True(File.Exists(moved));
             Assert.False(File.Exists(wav));
             Assert.Equal($"Audio (micro): {moved}", store.GetSession(id)!.Value.Session.Notes);
@@ -113,9 +113,9 @@ public sealed class FileSessionStoreTests : IDisposable
     {
         var store = new FileSessionStore(_root);
         var id = store.SaveSession("Buena", new DateTime(2026, 7, 1), TimeSpan.Zero, "", "", []);
-        var bad = Path.Combine(_root, "2026", "07", "roto");
+        var bad = Path.Join(_root, "2026", "07", "roto");
         Directory.CreateDirectory(bad);
-        File.WriteAllText(Path.Combine(bad, FileSessionStore.SessionFileName), "{ no soy json");
+        File.WriteAllText(Path.Join(bad, FileSessionStore.SessionFileName), "{ no soy json");
 
         var reopened = new FileSessionStore(_root);
         Assert.Equal(id, Assert.Single(reopened.ListSessions()).Id);
@@ -124,8 +124,8 @@ public sealed class FileSessionStoreTests : IDisposable
     [Fact]
     public void Migracion_Desde_Sqlite_Conserva_Ids_Y_Mueve_Audio()
     {
-        var dbPath = Path.Combine(_root, "..", $"vr-mig-{Guid.NewGuid():N}.db");
-        var wav = Path.Combine(_root, "..", $"vr-mig-{Guid.NewGuid():N}-micro.wav");
+        var dbPath = Path.Join(_root, "..", $"vr-mig-{Guid.NewGuid():N}.db");
+        var wav = Path.Join(_root, "..", $"vr-mig-{Guid.NewGuid():N}-micro.wav");
         File.WriteAllBytes(wav, [9, 9]);
         long oldId;
         using (var sqlite = new SQLiteSessionStore(dbPath))
@@ -141,7 +141,7 @@ public sealed class FileSessionStoreTests : IDisposable
         var (session, segments) = store.GetSession(oldId)!.Value;
         Assert.Equal("Antigua", session.Title);
         Assert.Equal("texto viejo", Assert.Single(segments).Text);
-        Assert.True(File.Exists(Path.Combine(store.GetSessionFolder(oldId)!, Path.GetFileName(wav))));
+        Assert.True(File.Exists(Path.Join(store.GetSessionFolder(oldId)!, Path.GetFileName(wav))));
         Assert.False(File.Exists(dbPath));
         Assert.True(File.Exists(dbPath + ".migrated"));
 

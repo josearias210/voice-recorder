@@ -92,7 +92,7 @@ if (segments.Count == 0)
     Environment.Exit(1);
 }
 
-var dbPath = Path.Combine(Path.GetTempPath(), $"voice-recorder-test-{Guid.NewGuid():N}.db");
+var dbPath = Path.Join(Path.GetTempPath(), $"voice-recorder-test-{Guid.NewGuid():N}.db");
 using (var store = new SQLiteSessionStore(dbPath))
 {
     lock (segments)

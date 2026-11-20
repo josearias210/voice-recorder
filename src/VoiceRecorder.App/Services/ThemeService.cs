@@ -21,9 +21,9 @@ public sealed class ThemeService
     public ThemeService(string? dataDir = null)
     {
         var dir = dataDir
-            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VoiceRecorder");
+            ?? Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VoiceRecorder");
         Directory.CreateDirectory(dir);
-        _settingsPath = Path.Combine(dir, "theme.txt");
+        _settingsPath = Path.Join(dir, "theme.txt");
     }
 
     /// <summary>Tema activo (por defecto: oscuro).</summary>

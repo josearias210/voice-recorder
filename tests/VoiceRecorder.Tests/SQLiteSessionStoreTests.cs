@@ -11,7 +11,7 @@ public sealed class SQLiteSessionStoreTests : IDisposable
 
     public SQLiteSessionStoreTests()
     {
-        _dbPath = Path.Combine(Path.GetTempPath(), $"vr-tests-{Guid.NewGuid():N}.db");
+        _dbPath = Path.Join(Path.GetTempPath(), $"vr-tests-{Guid.NewGuid():N}.db");
         _store = new SQLiteSessionStore(_dbPath);
     }
 
@@ -102,6 +102,7 @@ public sealed class SQLiteSessionStoreTests : IDisposable
         }
         catch (IOException)
         {
+            // Limpieza de la prueba: si Windows aún retiene el archivo, el directorio temporal se borra después.
         }
     }
 }

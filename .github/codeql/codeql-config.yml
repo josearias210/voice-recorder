@@ -1,0 +1,19 @@
+name: Voice Recorder CodeQL
+
+# Consultas de seguridad y calidad (security-and-quality). Se excluyen solo
+# dos reglas de estilo que no aplican a esta app de escritorio; el resto de
+# avisos se corrigen en el código.
+queries:
+  - uses: security-and-quality
+
+query-filters:
+  # La app captura audio y usa dispositivos, red y archivos del usuario: un
+  # fallo ahí no debe cerrarla. Los catch genéricos son intencionados, avisan
+  # al usuario o registran el error, y se limitan a esos límites (hilos,
+  # dispositivos, E/S).
+  - exclude:
+      id: cs/catch-of-all-exceptions
+  # App.xaml.cs es el punto de entrada de WPF y es un singleton: guarda en
+  # campos estáticos la bandeja, la ventana y el mutex de instancia única.
+  - exclude:
+      id: cs/static-field-written-by-instance

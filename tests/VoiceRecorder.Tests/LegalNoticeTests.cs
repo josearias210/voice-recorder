@@ -4,7 +4,7 @@ namespace VoiceRecorder.Tests;
 
 public class LegalNoticeTests : IDisposable
 {
-    private readonly string _dataDir = Path.Combine(Path.GetTempPath(), $"vr-legal-{Guid.NewGuid():N}");
+    private readonly string _dataDir = Path.Join(Path.GetTempPath(), $"vr-legal-{Guid.NewGuid():N}");
 
     public void Dispose()
     {
@@ -48,13 +48,13 @@ public class LegalNoticeTests : IDisposable
     public void Los_Documentos_Legales_Se_Incluyen_En_La_Salida()
     {
         var root = AppContext.BaseDirectory;
-        while (root is not null && !File.Exists(Path.Combine(root, "DISCLAIMER.md")))
+        while (root is not null && !File.Exists(Path.Join(root, "DISCLAIMER.md")))
         {
             root = Path.GetDirectoryName(root);
         }
 
         Assert.NotNull(root);
-        var disclaimer = File.ReadAllText(Path.Combine(root!, "DISCLAIMER.md"));
+        var disclaimer = File.ReadAllText(Path.Join(root!, "DISCLAIMER.md"));
         Assert.Contains("NO se hacen responsables", disclaimer);
         Assert.Contains(LegalNotice.Version, disclaimer);
     }

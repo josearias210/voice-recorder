@@ -6,7 +6,7 @@ namespace VoiceRecorder.Tests;
 
 public class AudioFileDecoderTests : IDisposable
 {
-    private readonly string _path = Path.Combine(Path.GetTempPath(), $"vr-decoder-{Guid.NewGuid():N}.wav");
+    private readonly string _path = Path.Join(Path.GetTempPath(), $"vr-decoder-{Guid.NewGuid():N}.wav");
 
     public void Dispose()
     {

@@ -237,7 +237,7 @@ public sealed class FileSessionStore : ISessionFileStore
         string notes,
         IReadOnlyList<TranscriptSegment> segments)
     {
-        var baseFolder = Path.Combine(RootDirectory, BuildRelativeFolder(id, startedAt).Replace('/', Path.DirectorySeparatorChar));
+        var baseFolder = Path.Join(RootDirectory, BuildRelativeFolder(id, startedAt).Replace('/', Path.DirectorySeparatorChar));
         var folder = baseFolder;
         for (var i = 2; Directory.Exists(folder); i++)
         {
@@ -354,12 +354,12 @@ public sealed class FileSessionStore : ISessionFileStore
 
     private static string UniquePath(string folder, string fileName)
     {
-        var candidate = Path.Combine(folder, fileName);
+        var candidate = Path.Join(folder, fileName);
         var name = Path.GetFileNameWithoutExtension(fileName);
         var ext = Path.GetExtension(fileName);
         for (var i = 2; File.Exists(candidate) || fileName == SessionFileName; i++)
         {
-            candidate = Path.Combine(folder, $"{name}-{i}{ext}");
+            candidate = Path.Join(folder, $"{name}-{i}{ext}");
             fileName = Path.GetFileName(candidate);
         }
 
@@ -388,7 +388,7 @@ public sealed class FileSessionStore : ISessionFileStore
     {
         try
         {
-            var path = Path.Combine(folder, SessionFileName);
+            var path = Path.Join(folder, SessionFileName);
             return File.Exists(path)
                 ? JsonSerializer.Deserialize<SessionFile>(File.ReadAllText(path), JsonOptions)
                 : null;
@@ -406,7 +406,7 @@ public sealed class FileSessionStore : ISessionFileStore
     /// <summary>Escritura atómica: archivo temporal y reemplazo.</summary>
     private static void Write(string folder, SessionFile data)
     {
-        var path = Path.Combine(folder, SessionFileName);
+        var path = Path.Join(folder, SessionFileName);
         var temp = path + ".tmp";
         File.WriteAllText(temp, JsonSerializer.Serialize(data, JsonOptions));
         File.Move(temp, path, overwrite: true);

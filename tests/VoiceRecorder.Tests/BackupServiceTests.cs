@@ -7,7 +7,7 @@ namespace VoiceRecorder.Tests;
 
 public sealed class BackupServiceTests : IDisposable
 {
-    private readonly string _root = Path.Combine(Path.GetTempPath(), $"vr-backup-{Guid.NewGuid():N}");
+    private readonly string _root = Path.Join(Path.GetTempPath(), $"vr-backup-{Guid.NewGuid():N}");
 
     public void Dispose()
     {
@@ -39,7 +39,7 @@ public sealed class BackupServiceTests : IDisposable
     {
         var store = new FileSessionStore(_root);
         var id = store.SaveSession("Llamada", new DateTime(2026, 11, 19, 10, 0, 0), TimeSpan.Zero, "", "", []);
-        File.WriteAllBytes(Path.Combine(store.GetSessionFolder(id)!, "micro.wav"), [1, 2, 3, 4]);
+        File.WriteAllBytes(Path.Join(store.GetSessionFolder(id)!, "micro.wav"), [1, 2, 3, 4]);
 
         var target = new FakeTarget();
         using var backup = new BackupService(_root) { Target = target };
@@ -93,7 +93,7 @@ public sealed class BackupServiceTests : IDisposable
 
         store.SaveSession("Nueva local", new DateTime(2026, 3, 3), TimeSpan.Zero, "", "", []);
         store.UpdateSession(changed, "Cambiada en local", "", "");
-        File.WriteAllBytes(Path.Combine(store.GetSessionFolder(synced)!, "micro.wav"), [5, 5]);
+        File.WriteAllBytes(Path.Join(store.GetSessionFolder(synced)!, "micro.wav"), [5, 5]);
         var remoteOnlyFolder = "2026/03/20260304-000000-00099";
         target.Files[$"{remoteOnlyFolder}/session.json"] = System.Text.Encoding.UTF8.GetBytes(
             """{"version":1,"id":99,"title":"De otro equipo","startedAt":"2026-03-04T00:00:00","activeDurationSeconds":0,"tags":"","notes":"","segments":[]}""");
@@ -150,7 +150,7 @@ public sealed class BackupServiceTests : IDisposable
     {
         var store = new FileSessionStore(_root);
         var id = store.SaveSession("x", new DateTime(2026, 4, 4), TimeSpan.Zero, "", "", []);
-        var wav = Path.Combine(store.GetSessionFolder(id)!, "micro.wav");
+        var wav = Path.Join(store.GetSessionFolder(id)!, "micro.wav");
         File.WriteAllBytes(wav, [1, 1]);
         var target = new FakeTarget();
         using var backup = new BackupService(_root) { Target = target };
@@ -173,7 +173,7 @@ public sealed class BackupServiceTests : IDisposable
         var id1 = storeA.SaveSession("Primera", new DateTime(2026, 6, 1, 10, 0, 0), TimeSpan.Zero, "", "",
             [new TranscriptSegment(Speaker.Me, TimeSpan.Zero, TimeSpan.FromSeconds(1), "uno")]);
         storeA.SaveSession("Segunda", new DateTime(2026, 6, 2, 10, 0, 0), TimeSpan.Zero, "", "", []);
-        File.WriteAllBytes(Path.Combine(storeA.GetSessionFolder(id1)!, "micro.wav"), [7, 7, 7]);
+        File.WriteAllBytes(Path.Join(storeA.GetSessionFolder(id1)!, "micro.wav"), [7, 7, 7]);
         var target = new FakeTarget();
         using (var backupA = new BackupService(_root) { Target = target })
         {
@@ -204,7 +204,7 @@ public sealed class BackupServiceTests : IDisposable
 
         // Ya está sincronizada; un cambio local no se pisa salvo que se pida.
         Assert.Equal(SyncState.Synced, (await backupB.CompareAsync(CancellationToken.None)).Sessions.Single(r => r.Title == "Primera").State);
-        var localWav = Path.Combine(storeB.GetSessionFolder(titles["Primera"])!, "micro.wav");
+        var localWav = Path.Join(storeB.GetSessionFolder(titles["Primera"])!, "micro.wav");
         File.WriteAllBytes(localWav, [9]);
         var again = await backupB.DownloadSessionsAsync([first.Folder], false, CancellationToken.None);
         Assert.Equal((0, 1, 1), (again.Downloaded, again.Unchanged, again.Skipped));
@@ -240,7 +240,7 @@ public sealed class BackupServiceTests : IDisposable
             var store = new FileSessionStore(_root);
             var id = store.SaveSession("Integración", new DateTime(2026, 11, 19, 12, 0, 0), TimeSpan.FromSeconds(5), "", "",
                 [new TranscriptSegment(Speaker.Me, TimeSpan.Zero, TimeSpan.FromSeconds(1), "hola Azure")]);
-            File.WriteAllBytes(Path.Combine(store.GetSessionFolder(id)!, "micro.wav"), RandomNumberGenerator.GetBytes(4096));
+            File.WriteAllBytes(Path.Join(store.GetSessionFolder(id)!, "micro.wav"), RandomNumberGenerator.GetBytes(4096));
 
             using var backup = new BackupService(_root) { Target = target };
             var before = await backup.CompareAsync(CancellationToken.None);
