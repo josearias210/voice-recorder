@@ -203,7 +203,7 @@ public sealed class MainViewModel : ViewModelBase
     /// Carpeta donde se escriben los WAV del modo "grabar primero" mientras se
     /// graba; al guardar la sesión se mueven a la carpeta de la sesión.
     /// </summary>
-    public static string AudioDirectory => Path.Combine(
+    public static string AudioDirectory => Path.Join(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "VoiceRecorder",
         "audio");
@@ -533,8 +533,8 @@ public sealed class MainViewModel : ViewModelBase
             if (RecordAudioFirst)
             {
                 var baseName = $"grabacion-{_sessionStart:yyyyMMdd-HHmmss}";
-                _micWriter = new WavChunkWriter(Path.Combine(AudioDirectory, $"{baseName}-micro.wav"));
-                _loopWriter = new WavChunkWriter(Path.Combine(AudioDirectory, $"{baseName}-llamada.wav"));
+                _micWriter = new WavChunkWriter(Path.Join(AudioDirectory, $"{baseName}-micro.wav"));
+                _loopWriter = new WavChunkWriter(Path.Join(AudioDirectory, $"{baseName}-llamada.wav"));
                 transcriber.AudioTapped += OnAudioTapped;
             }
 

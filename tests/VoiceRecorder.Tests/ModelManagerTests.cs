@@ -6,7 +6,7 @@ namespace VoiceRecorder.Tests;
 
 public class ModelManagerTests : IDisposable
 {
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), $"vr-mm-{Guid.NewGuid():N}");
+    private readonly string _dir = Path.Join(Path.GetTempPath(), $"vr-mm-{Guid.NewGuid():N}");
 
     public ModelManagerTests() => Directory.CreateDirectory(_dir);
 
@@ -31,9 +31,11 @@ public class ModelManagerTests : IDisposable
     {
         var data = Encoding.UTF8.GetBytes("modelo de prueba");
         var hash = Convert.ToHexString(SHA256.HashData(data)).ToLowerInvariant();
-        var destination = Path.Combine(_dir, "ok.onnx");
+        var destination = Path.Join(_dir, "ok.onnx");
 
-        await ModelManager.DownloadToFileAsync(new MemoryStream(data), destination, null, CancellationToken.None, hash);
+        await using var source = new MemoryStream(data);
+
+        await ModelManager.DownloadToFileAsync(source, destination, null, CancellationToken.None, hash);
 
         Assert.Equal(data, await File.ReadAllBytesAsync(destination));
     }
@@ -41,10 +43,12 @@ public class ModelManagerTests : IDisposable
     [Fact]
     public async Task Descarga_Con_Hash_Incorrecto_Se_Descarta()
     {
-        var destination = Path.Combine(_dir, "bad.onnx");
+        var destination = Path.Join(_dir, "bad.onnx");
+
+        await using var source = new MemoryStream(Encoding.UTF8.GetBytes("contenido manipulado"));
 
         await Assert.ThrowsAsync<InvalidDataException>(() => ModelManager.DownloadToFileAsync(
-            new MemoryStream(Encoding.UTF8.GetBytes("contenido manipulado")),
+            source,
             destination,
             null,
             CancellationToken.None,

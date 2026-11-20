@@ -4,7 +4,7 @@ namespace VoiceRecorder.Tests;
 
 public class ThemeServiceTests : IDisposable
 {
-    private readonly string _dataDir = Path.Combine(Path.GetTempPath(), $"vr-theme-{Guid.NewGuid():N}");
+    private readonly string _dataDir = Path.Join(Path.GetTempPath(), $"vr-theme-{Guid.NewGuid():N}");
 
     public void Dispose()
     {
@@ -39,7 +39,7 @@ public class ThemeServiceTests : IDisposable
     {
         var service = new ThemeService(_dataDir);
         service.SetTheme(AppTheme.Light);
-        File.WriteAllText(Path.Combine(_dataDir, "theme.txt"), "neon-purple");
+        File.WriteAllText(Path.Join(_dataDir, "theme.txt"), "neon-purple");
 
         var restarted = new ThemeService(_dataDir);
         restarted.Initialize();

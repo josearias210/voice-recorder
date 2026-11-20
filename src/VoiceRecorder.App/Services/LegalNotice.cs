@@ -31,7 +31,7 @@ public static class LegalNotice
     /// <summary>Abre DISCLAIMER.md (o PRIVACY.md) incluido en el paquete con el Bloc de notas.</summary>
     public static void OpenDocument(string fileName)
     {
-        var path = Path.Combine(AppContext.BaseDirectory, fileName);
+        var path = Path.Join(AppContext.BaseDirectory, fileName);
         if (!File.Exists(path))
         {
             return;

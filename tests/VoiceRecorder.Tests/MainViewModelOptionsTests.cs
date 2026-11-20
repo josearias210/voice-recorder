@@ -11,8 +11,8 @@ namespace VoiceRecorder.Tests;
 /// </summary>
 public class MainViewModelOptionsTests : IDisposable
 {
-    private readonly string _modelsDir = Path.Combine(Path.GetTempPath(), $"vr-models-{Guid.NewGuid():N}");
-    private readonly string _dataDir = Path.Combine(Path.GetTempPath(), $"vr-settings-{Guid.NewGuid():N}");
+    private readonly string _modelsDir = Path.Join(Path.GetTempPath(), $"vr-models-{Guid.NewGuid():N}");
+    private readonly string _dataDir = Path.Join(Path.GetTempPath(), $"vr-settings-{Guid.NewGuid():N}");
     private readonly MainViewModel _viewModel;
 
     public MainViewModelOptionsTests()
@@ -22,12 +22,9 @@ public class MainViewModelOptionsTests : IDisposable
 
     public void Dispose()
     {
-        foreach (var dir in new[] { _modelsDir, _dataDir })
+        foreach (var dir in new[] { _modelsDir, _dataDir }.Where(Directory.Exists))
         {
-            if (Directory.Exists(dir))
-            {
-                Directory.Delete(dir, recursive: true);
-            }
+            Directory.Delete(dir, recursive: true);
         }
     }
 

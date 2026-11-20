@@ -52,7 +52,7 @@ public class AsyncRelayCommand : ICommand
 
     public bool IsRunning => Volatile.Read(ref _running) == 1;
 
-    public bool CanExecute(object? parameter) => IsRunning == false && (_canExecute?.Invoke(parameter) ?? true);
+    public bool CanExecute(object? parameter) => !IsRunning && (_canExecute?.Invoke(parameter) ?? true);
 
     public async void Execute(object? parameter)
     {

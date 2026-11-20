@@ -4,7 +4,7 @@ namespace VoiceRecorder.Tests;
 
 public class SettingsServiceTests : IDisposable
 {
-    private readonly string _dataDir = Path.Combine(Path.GetTempPath(), $"vr-settings-{Guid.NewGuid():N}");
+    private readonly string _dataDir = Path.Join(Path.GetTempPath(), $"vr-settings-{Guid.NewGuid():N}");
 
     public void Dispose()
     {
@@ -51,7 +51,7 @@ public class SettingsServiceTests : IDisposable
     public void Archivo_Corrupto_No_Lanza_Y_Vuelve_A_Por_Defecto()
     {
         new SettingsService(_dataDir) { LanguageCode = "en" }.Save();
-        File.WriteAllText(Path.Combine(_dataDir, "settings.json"), "{ no soy json");
+        File.WriteAllText(Path.Join(_dataDir, "settings.json"), "{ no soy json");
 
         var restarted = new SettingsService(_dataDir);
         restarted.Load();
@@ -71,7 +71,7 @@ public class SettingsServiceTests : IDisposable
         original.SetBackupKey("clave-secreta-de-prueba");
         original.Save();
 
-        Assert.DoesNotContain("clave-secreta-de-prueba", File.ReadAllText(Path.Combine(_dataDir, "settings.json")));
+        Assert.DoesNotContain("clave-secreta-de-prueba", File.ReadAllText(Path.Join(_dataDir, "settings.json")));
 
         var restarted = new SettingsService(_dataDir);
         restarted.Load();

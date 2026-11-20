@@ -59,7 +59,7 @@ public partial class App : System.Windows.Application
             Timeout.Infinite,
             executeOnlyOnce: false);
 
-        var dataDir = Path.Combine(
+        var dataDir = Path.Join(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "VoiceRecorder");
         var models = new ModelManager();
@@ -73,11 +73,11 @@ public partial class App : System.Windows.Application
         }
 
         // Sesiones en carpetas (Sesiones\AAAA\MM\...); la antigua sessions.db se migra una vez.
-        _store = new FileSessionStore(Path.Combine(dataDir, "Sesiones"));
+        _store = new FileSessionStore(Path.Join(dataDir, "Sesiones"));
         string? migrationError = null;
         try
         {
-            SqliteMigration.MigrateIfNeeded(Path.Combine(dataDir, "sessions.db"), _store);
+            SqliteMigration.MigrateIfNeeded(Path.Join(dataDir, "sessions.db"), _store);
         }
         catch (Exception ex)
         {
@@ -147,7 +147,7 @@ public partial class App : System.Windows.Application
 
     private static void InitTray(MainViewModel viewModel)
     {
-        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "app.ico");
+        var iconPath = Path.Join(AppContext.BaseDirectory, "Assets", "app.ico");
         var icon = File.Exists(iconPath) ? new System.Drawing.Icon(iconPath) : System.Drawing.SystemIcons.Application;
 
         var menu = new WinForms.ContextMenuStrip();
@@ -164,7 +164,7 @@ public partial class App : System.Windows.Application
         menu.Items.Add("Aviso legal", null, (_, _) => LegalNotice.OpenDocument("DISCLAIMER.md"));
         menu.Items.Add("Privacidad", null, (_, _) => LegalNotice.OpenDocument("PRIVACY.md"));
         menu.Items.Add(new WinForms.ToolStripSeparator());
-        menu.Items.Add("Salir", null, (_, _) => ((App)Current).ExitApplication());
+        menu.Items.Add("Salir", null, (_, _) => Current.ExitApplication());
 
         _trayIcon = new WinForms.NotifyIcon
         {
