@@ -199,7 +199,10 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Carpeta donde se guardan los WAV del modo "grabar primero".</summary>
+    /// <summary>
+    /// Carpeta donde se escriben los WAV del modo "grabar primero" mientras se
+    /// graba; al guardar la sesión se mueven a la carpeta de la sesión.
+    /// </summary>
     public static string AudioDirectory => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "VoiceRecorder",
@@ -676,10 +679,19 @@ public sealed class MainViewModel : ViewModelBase
                 notes,
                 segments));
 
+            // Los WAV pasan de la carpeta temporal a la carpeta de la sesión.
+            var audioFolder = AudioDirectory;
+            if (micPath is not null && _store is ISessionFileStore fileStore)
+            {
+                string[] audioFiles = loopPath is null ? [micPath] : [micPath, loopPath];
+                await Task.Run(() => fileStore.AttachFiles(id, audioFiles));
+                audioFolder = fileStore.GetSessionFolder(id) ?? audioFolder;
+            }
+
             StatusText = transcriptionError is not null
-                ? $"Sesión y audio guardados, pero no se pudo transcribir: {transcriptionError}. Puedes importar los WAV para reintentar."
+                ? $"Sesión y audio guardados en {audioFolder}, pero no se pudo transcribir: {transcriptionError}. Puedes importar los WAV para reintentar."
                 : RecordAudioFirst
-                ? $"Sesión guardada ({segments.Count} segmentos). Audio conservado en {AudioDirectory}"
+                ? $"Sesión guardada ({segments.Count} segmentos). Audio conservado en {audioFolder}"
                 : $"Sesión guardada ({segments.Count} segmentos).";
             Segments.Clear();
             LoadHistory(SearchText);
