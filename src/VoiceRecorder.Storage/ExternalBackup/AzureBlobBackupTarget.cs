@@ -17,6 +17,7 @@ public sealed class AzureBlobBackupTarget : IBackupTarget
     private readonly BlobContainerClient _container;
     private readonly string _prefix;
 
+    /// <summary>Crea el destino de backup sobre un contenedor de Azure Blob Storage.</summary>
     /// <param name="accountName">Nombre de la cuenta de almacenamiento.</param>
     /// <param name="accountKey">Clave de acceso de la cuenta, o una cadena de conexión completa.</param>
     /// <param name="containerName">Contenedor (se crea si no existe).</param>

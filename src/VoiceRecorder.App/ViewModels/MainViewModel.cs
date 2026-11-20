@@ -48,7 +48,7 @@ public sealed class MainViewModel : ViewModelBase
     private SessionState _state = SessionState.Idle;
     private int _importGuard;
     private CancellationTokenSource? _importCts;
-    private bool _settingsLoaded;
+    private readonly bool _settingsLoaded;
     private WavChunkWriter? _micWriter;
     private WavChunkWriter? _loopWriter;
     private bool _isFinalizing;

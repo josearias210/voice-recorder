@@ -328,6 +328,7 @@ public sealed class BackupService : IDisposable
             }
             catch (DirectoryNotFoundException)
             {
+                // La carpeta se borró mientras subíamos: nada que respaldar.
             }
             catch (Exception ex)
             {

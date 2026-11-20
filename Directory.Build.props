@@ -1,7 +1,7 @@
 <Project>
 
   <PropertyGroup>
-    <Version>1.3.3</Version>
+    <Version>1.3.4</Version>
     <Authors>josearias210</Authors>
     <Product>Voice Recorder</Product>
     <Company>Voice Recorder contributors</Company>

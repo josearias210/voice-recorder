@@ -14,7 +14,7 @@ Meet · Teams · Zoom · WhatsApp Web · Discord — si suena en tu PC, se trans
 
 ---
 
-**[English below](#english)** · Aplicación de escritorio para **Windows** que transcribe **en vivo** las conversaciones de **cualquier app de llamadas**, sin drivers virtuales, sin nube y **sin guardar el audio**: solo la transcripción.
+**[English below](#english)** · Aplicación de escritorio para **Windows** que transcribe **en vivo** las conversaciones de **cualquier app de llamadas**, sin drivers virtuales, sin nube por defecto y **sin guardar el audio**: solo la transcripción.
 
 > ⚖️ **Aviso legal**: software gratuito ofrecido **«tal cual», sin garantías**. El autor **no se hace responsable** del uso que se haga de la aplicación ni de sus consecuencias: **cada usuario es el único responsable** de cumplir la ley y de obtener el consentimiento de las personas que participan en una conversación antes de grabarla o transcribirla. Está diseñada para que **un participante transcriba su propia llamada**: siempre es visible, solo graba cuando pulsas *Iniciar* y no envía nada a nadie; **no se admite su uso para grabar a escondidas o vigilar a otras personas**. La app pide aceptar este aviso al abrirse por primera vez. Lee el [aviso legal completo](DISCLAIMER.md) y la [política de privacidad](PRIVACY.md).
 
@@ -22,9 +22,9 @@ Meet · Teams · Zoom · WhatsApp Web · Discord — si suena en tu PC, se trans
 
 - 🔌 **Universal**: captura el audio a nivel de sistema (WASAPI Loopback + micrófono). No depende de Meet, Teams, Zoom ni de ninguna app concreta.
 - 👥 **¿Quién dijo qué?**: burbujas `Yo` / `Ellos` separadas por detección de voz (VAD Silero) en cada canal.
-- 🔒 **100% local**: transcripción con Whisper (whisper.cpp) en tu máquina. Nada sale de tu PC.
+- 🔒 **100% local**: transcripción con Whisper (whisper.cpp) en tu máquina. Nada sale de tu PC salvo el backup opcional que tú actives.
 - ⏸ **Pausar y reanudar**: el cronómetro de sesión excluye las pausas.
-- 💾 **Historial con etiquetas**: sesiones en SQLite, reabribles como vista de chat.
+- 💾 **Historial con etiquetas**: sesiones guardadas como carpetas (`Sesiones/AAAA/MM/…`), reabribles como vista de chat, con backup manual opcional en tu Azure Blob Storage.
 - 📤 **Exportar**: TXT, Markdown y SRT (subtítulos).
 - **Transcribir archivos**: importa audio o vídeo (mp3, wav, m4a, mp4, mkv, mov, …) arrastrándolos a la ventana o con el botón *Transcribir archivo*; cada archivo se guarda como una sesión del historial.
 - 🖥️ **Bandeja del sistema**: control Iniciar/Pausar/Detener sin abrir la ventana.
@@ -136,13 +136,13 @@ El backup es **siempre manual**: la app nunca sube ni baja nada por su cuenta. P
                                       ├─► 16 kHz mono ─► VAD Silero ─► Enunciados etiquetados ─► Whisper ─► Chat en vivo
 [Micrófono ─ tu voz]──────────────────┘    por canal       (Yo/Ellos)                              │
                                                                                                           ▼
-                                              UI (WPF) ◄────────────────────────────────────── SQLite (sesiones)
+                                              UI (WPF) ◄────────────────────────────────────── Carpetas (sesiones)
 ```
 
 - **WASAPI Loopback**: función nativa de Windows que entrega una copia del audio que el sistema reproduce. No intercepta ni modifica nada, no instala drivers y funciona con cualquier aplicación.
 - **VAD Silero (ONNX)**: detecta voz real y descarta silencios; canales separados → atribución de hablante sin diarización compleja.
 - **Whisper local**: transcripción con [Whisper.net](https://github.com/sandrohanea/whisper.net) (whisper.cpp).
-- **SQLite**: historial de sesiones y segmentos.
+- **Carpetas**: cada sesión es una carpeta con `session.json` (y sus WAV si grabas audio primero); `sessions.db` antiguo se migra solo.
 
 ### Estructura del repositorio
 
@@ -150,7 +150,7 @@ El backup es **siempre manual**: la app nunca sube ni baja nada por su cuenta. P
 src/VoiceRecorder.Core          · DTOs e interfaces
 src/VoiceRecorder.Audio         · Captura WASAPI dual + resampleo 16 kHz
 src/VoiceRecorder.Transcription · VAD + Whisper + orquestador de sesión
-src/VoiceRecorder.Storage       · Persistencia SQLite
+src/VoiceRecorder.Storage       · Persistencia en carpetas + backup Azure
 src/VoiceRecorder.App           · UI WPF (chat, historial, bandeja, updates)
 tools/CaptureVerifier           · Verifica captura de audio (Fase 1)
 tools/PipelineVerifier          · Verificación E2E del pipeline
@@ -174,7 +174,7 @@ scripts/                        · Build/publish y tareas Docker
 Solo necesitas [Docker Desktop](https://www.docker.com/products/docker-desktop/) en modo contenedores Linux. No hace falta instalar .NET:
 
 ```powershell
-.\scripts\docker.ps1 test      # pruebas multiplataforma (núcleo, transcripción, SQLite)
+.\scripts\docker.ps1 test      # pruebas multiplataforma (núcleo, transcripción, almacenamiento)
 .\scripts\docker.ps1 build     # compila toda la solución, incluida la app WPF, con -warnaserror
 .\scripts\docker.ps1 run       # genera la app portable y la abre (artifacts\docker-publish\VoiceRecorder.exe)
 .\scripts\docker.ps1 all       # build + test + formato + lint de workflows + escaneo de secretos
@@ -236,6 +236,6 @@ Windows desktop app that transcribes **any call app** (Meet, Teams, Zoom, …) *
 - **Test**: `dotnet test`.
 - **License**: MIT.
 
-> ⚠️ Recording conversations may require the consent of all parties depending on your jurisdiction. The app is built for a participant transcribing their own call: it is always visible, records only when you press Start and never sends recordings anywhere. Covert recording or surveillance is not a permitted use.
+> ⚠️ Recording conversations may require the consent of all parties depending on your jurisdiction. The app is built for a participant transcribing their own call: it is always visible, records only when you press Start and never sends recordings anywhere on its own (the only exception is an optional, manual backup to your own Azure account). Covert recording or surveillance is not a permitted use.
 >
 > 🛡️ The installer is not code-signed yet, so Windows SmartScreen may warn you (*More info → Run anyway*), or install with Scoop. Verify downloads against `SHA256SUMS.txt`.

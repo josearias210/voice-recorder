@@ -1,6 +1,6 @@
 # 🔒 Política de privacidad — Voice Recorder
 
-> Última actualización: 2026-11-19 · Aplica a partir de la versión posterior a 1.3.3
+> Última actualización: 2026-11-20 · Aplica a partir de la versión 1.3.4
 
 **En una frase:** Voice Recorder procesa todo el audio **en tu equipo**; el texto y el audio nunca salen de tu disco salvo cuando tú decides descargar un modelo o aceptar una actualización.
 

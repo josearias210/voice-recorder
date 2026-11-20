@@ -11,12 +11,9 @@ public sealed class BackupServiceTests : IDisposable
 
     public void Dispose()
     {
-        foreach (var dir in new[] { _root, _root + "-b", _root + "-otro" })
+        foreach (var dir in new[] { _root, _root + "-b", _root + "-otro" }.Where(Directory.Exists))
         {
-            if (Directory.Exists(dir))
-            {
-                Directory.Delete(dir, recursive: true);
-            }
+            Directory.Delete(dir, recursive: true);
         }
     }
 
