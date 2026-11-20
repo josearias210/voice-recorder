@@ -23,6 +23,17 @@
 
 4. Envía un Pull Request describiendo el *qué* y el *por qué*.
 
+## Funciones que no se aceptan
+
+Voice Recorder es una herramienta para que **un participante transcriba su propia llamada con conocimiento de los demás**. Para mantener ese propósito (ver [DISCLAIMER.md](DISCLAIMER.md#diseño-transparente-lo-que-la-aplicación-no-hace-ni-hará)), **no se aceptarán issues ni PRs** que añadan:
+
+- Modos ocultos, sin ventana o sin icono en la bandeja, o que escondan el estado de grabación.
+- Grabación que empiece sola, en segundo plano o al arrancar Windows sin una acción explícita del usuario.
+- Envío, subida o sincronización de grabaciones o transcripciones a servidores o a terceros.
+- Captura de dispositivos, cuentas o comunicaciones en las que el usuario no participa.
+
+Las issues que pidan ayuda para un uso no permitido (grabar a alguien sin que lo sepa, vigilar a otra persona…) se cerrarán sin respuesta técnica.
+
 ## Convenciones
 
 - **Idioma**: UI y docs en español; identificadores y comentarios de código en inglés.

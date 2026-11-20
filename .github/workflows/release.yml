@@ -66,7 +66,7 @@ jobs:
           if ($actual -ne '${{ steps.version.outputs.version }}') { throw "Versión incorrecta: $actual" }
 
       - name: Install Velopack CLI
-        run: dotnet tool update --global vpk --version 1.2.158
+        run: dotnet tool update --global vpk --version 1.2.161
 
       # Descarga el último release publicado para que vpk pack genere el
       # paquete delta (actualización incremental). Si no hay release previo,

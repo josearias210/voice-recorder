@@ -28,7 +28,7 @@ jobs:
         run: >-
           docker run --rm -v "${{ github.workspace }}:/repo"
           -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*'
-          zricethezav/gitleaks:v8.24.3 git /repo --redact --no-banner --exit-code 1
+          zricethezav/gitleaks:v8.30.1 git /repo --redact --no-banner --exit-code 1
 
   build-test:
     name: Build & Test (Windows)

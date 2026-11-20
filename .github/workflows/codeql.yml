@@ -32,7 +32,7 @@ jobs:
         uses: actions/checkout@v7
 
       # build-mode none: CodeQL extrae el C# sin compilar, así que funciona en
-      # Linux aunque la app sea WPF (net8.0-windows).
+      # Linux aunque la app sea WPF (net10.0-windows).
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:

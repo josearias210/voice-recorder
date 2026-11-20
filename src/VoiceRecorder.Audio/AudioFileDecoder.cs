@@ -57,7 +57,7 @@ public static class AudioFileDecoder
 
         public TimeSpan Duration => _reader.TotalTime;
 
-        public int Read(float[] buffer, int offset, int count) => _pipeline.Read(buffer, offset, count);
+        public int Read(float[] buffer, int offset, int count) => _pipeline.Read(buffer.AsSpan(offset, count));
 
         public void Dispose() => _reader.Dispose();
     }

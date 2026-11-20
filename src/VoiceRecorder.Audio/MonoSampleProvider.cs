@@ -15,18 +15,19 @@ public sealed class MonoSampleProvider : ISampleProvider
 
     public WaveFormat WaveFormat => WaveFormat.CreateIeeeFloatWaveFormat(_source.WaveFormat.SampleRate, 1);
 
-    public int Read(float[] buffer, int offset, int count)
+    public int Read(float[] buffer, int offset, int count) => Read(buffer.AsSpan(offset, count));
+
+    public int Read(Span<float> buffer)
     {
         var channels = _source.WaveFormat.Channels;
-        var framesRequested = count;
-        var samplesNeeded = framesRequested * channels;
+        var samplesNeeded = buffer.Length * channels;
 
         if (_scratch.Length < samplesNeeded)
         {
             _scratch = new float[samplesNeeded];
         }
 
-        var read = _source.Read(_scratch, 0, samplesNeeded);
+        var read = _source.Read(_scratch.AsSpan(0, samplesNeeded));
         var frames = read / channels;
 
         for (var i = 0; i < frames; i++)
@@ -37,7 +38,7 @@ public sealed class MonoSampleProvider : ISampleProvider
                 sum += _scratch[(i * channels) + c];
             }
 
-            buffer[offset + i] = sum / channels;
+            buffer[i] = sum / channels;
         }
 
         return frames;
