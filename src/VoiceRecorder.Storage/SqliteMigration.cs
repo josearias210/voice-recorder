@@ -45,13 +45,12 @@ public static class SqliteMigration
         }
 
         SqliteConnection.ClearAllPools();
-        foreach (var suffix in new[] { string.Empty, "-wal", "-shm" })
+        var databaseFiles = new[] { string.Empty, "-wal", "-shm" }
+            .Select(suffix => databasePath + suffix)
+            .Where(File.Exists);
+        foreach (var file in databaseFiles)
         {
-            var file = databasePath + suffix;
-            if (File.Exists(file))
-            {
-                File.Move(file, file + ".migrated", overwrite: true);
-            }
+            File.Move(file, file + ".migrated", overwrite: true);
         }
 
         return migrated;
@@ -60,15 +59,11 @@ public static class SqliteMigration
     /// <summary>Rutas de audio registradas en las notas ("Audio (micro): ruta").</summary>
     public static IEnumerable<string> ExtractAudioPaths(string? notes)
     {
-        foreach (var line in (notes ?? string.Empty).Split('\n'))
+        foreach (var trimmed in (notes ?? string.Empty).Split('\n').Select(line => line.Trim()))
         {
-            var trimmed = line.Trim();
-            foreach (var prefix in AudioNotePrefixes)
+            foreach (var prefix in AudioNotePrefixes.Where(p => trimmed.StartsWith(p, StringComparison.Ordinal)))
             {
-                if (trimmed.StartsWith(prefix, StringComparison.Ordinal))
-                {
-                    yield return trimmed[prefix.Length..].Trim();
-                }
+                yield return trimmed[prefix.Length..].Trim();
             }
         }
     }

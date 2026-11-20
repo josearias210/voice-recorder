@@ -306,9 +306,10 @@ public sealed class FileSessionStore : ISessionFileStore
     {
         var known = new HashSet<string>(_folders.Values, StringComparer.OrdinalIgnoreCase);
         var pending = new List<(string Folder, SessionFile Data)>();
-        foreach (var file in Directory.EnumerateFiles(RootDirectory, SessionFileName, SearchOption.AllDirectories))
+        var folders = Directory.EnumerateFiles(RootDirectory, SessionFileName, SearchOption.AllDirectories)
+            .Select(file => Path.GetDirectoryName(file)!);
+        foreach (var folder in folders)
         {
-            var folder = Path.GetDirectoryName(file)!;
             if (known.Contains(folder) || TryRead(folder) is not { } data)
             {
                 continue;
