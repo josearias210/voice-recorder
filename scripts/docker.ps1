@@ -15,6 +15,7 @@
       format   Comprueba el formato del código según .editorconfig.
       lint     Revisa los workflows de GitHub Actions (actionlint).
       secrets  Busca claves o secretos en todo el historial (gitleaks).
+      hooks    Activa el hook pre-commit que revisa cada commit con gitleaks.
       all      build + test + format + lint + secrets (lo mismo que el CI de Linux).
       shell    Abre una terminal dentro del contenedor de .NET.
       clean    Borra artifacts\ y los volúmenes de caché de Docker del proyecto.
@@ -30,7 +31,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('build', 'test', 'publish', 'run', 'format', 'lint', 'secrets', 'all', 'shell', 'clean')]
+    [ValidateSet('build', 'test', 'publish', 'run', 'format', 'lint', 'secrets', 'hooks', 'all', 'shell', 'clean')]
     [string]$Task = 'all'
 )
 
@@ -75,6 +76,12 @@ try {
         }
         'shell' {
             Invoke-Compose run --rm build bash
+        }
+        'hooks' {
+            git config core.hooksPath .githooks
+            if ($LASTEXITCODE -ne 0) { throw 'No se pudo activar el hook pre-commit.' }
+            docker pull --quiet zricethezav/gitleaks:v8.30.1 | Out-Null
+            Write-Host 'Hook pre-commit activado: cada commit se revisará con gitleaks.' -ForegroundColor Green
         }
         'clean' {
             Invoke-Compose down --volumes --remove-orphans

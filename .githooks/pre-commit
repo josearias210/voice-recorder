@@ -1,0 +1,31 @@
+#!/bin/sh
+# Hook de git: revisa con gitleaks los cambios preparados (staged) antes de
+# cada commit, para que una clave o token no llegue nunca al historial.
+# Se activa una vez por clon con:  .\scripts\docker.ps1 hooks
+# Solo necesita Docker; no instala nada en la máquina.
+
+GITLEAKS_IMAGE="zricethezav/gitleaks:v8.30.1"
+
+if ! docker info >/dev/null 2>&1; then
+  echo "pre-commit: Docker no está disponible; no se puede comprobar si hay secretos." >&2
+  echo "Abre Docker Desktop y vuelve a hacer el commit." >&2
+  exit 1
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+# En Git Bash (Windows), Docker necesita la ruta en formato C:/...
+if (cd "$repo_root" && pwd -W) >/dev/null 2>&1; then
+  repo_root="$(cd "$repo_root" && pwd -W)"
+fi
+
+MSYS_NO_PATHCONV=1 docker run --rm -v "$repo_root:/repo" -w /repo \
+  -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' \
+  "$GITLEAKS_IMAGE" git /repo --pre-commit --staged --redact --no-banner --exit-code 1
+status=$?
+
+if [ "$status" -ne 0 ]; then
+  echo "" >&2
+  echo "pre-commit: gitleaks ha encontrado posibles secretos en los cambios preparados." >&2
+  echo "Quítalos del código (usa variables de entorno o secretos de GitHub Actions) y repite el commit." >&2
+  exit "$status"
+fi
