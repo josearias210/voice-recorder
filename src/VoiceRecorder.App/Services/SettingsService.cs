@@ -54,7 +54,7 @@ public sealed class SettingsService
     /// <summary>Versión del aviso legal (<see cref="LegalNotice.Version"/>) que el usuario aceptó.</summary>
     public string? AcceptedLegalNoticeVersion { get; set; }
 
-    /// <summary>Copia en Azure Blob Storage todo lo que se guarda en local (desactivado por defecto).</summary>
+    /// <summary>Backup externo en Azure Blob Storage configurado (desactivado por defecto). La subida siempre es manual.</summary>
     public bool BackupEnabled { get; set; }
 
     /// <summary>Nombre de la cuenta de Azure Storage.</summary>

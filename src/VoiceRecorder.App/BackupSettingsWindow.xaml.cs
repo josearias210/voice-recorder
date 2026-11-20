@@ -4,7 +4,7 @@ using VoiceRecorder.Storage.Backup;
 
 namespace VoiceRecorder.App;
 
-/// <summary>Configuración del backup externo (Azure Blob Storage).</summary>
+/// <summary>Configuración del backup externo (Azure Blob Storage). No sube nada: solo guarda la conexión.</summary>
 public partial class BackupSettingsWindow : Window
 {
     private readonly SettingsService _settings;
@@ -26,10 +26,6 @@ public partial class BackupSettingsWindow : Window
         KeyHint.Text = settings.HasBackupKey
             ? "Hay una clave guardada (cifrada). Déjalo vacío para conservarla o escribe una nueva para reemplazarla."
             : "La clave se guarda cifrada con DPAPI: solo tu usuario de Windows en este equipo puede leerla.";
-        if (backup.Service.LastResult is { } last && backup.Service.LastSyncAt is { } at)
-        {
-            StatusText.Text = $"Último respaldo {at:dd/MM HH:mm}. {BackupCoordinator.Describe(last)}";
-        }
     }
 
     /// <summary>Clave a usar: la escrita ahora o, si está vacía, la guardada.</summary>
@@ -37,45 +33,36 @@ public partial class BackupSettingsWindow : Window
 
     private async void Test_Click(object sender, RoutedEventArgs e)
     {
-        await RunAsync(async () =>
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        TestButton.IsEnabled = SaveButton.IsEnabled = false;
+        try
         {
             var target = BackupCoordinator.CreateTarget(AccountBox.Text, CurrentKey(), ContainerBox.Text);
             StatusText.Text = $"Conectando con {target.DisplayName}…";
             await target.EnsureReadyAsync(CancellationToken.None);
             var files = await target.ListAsync(CancellationToken.None);
             StatusText.Text = $"Conexión correcta con {target.DisplayName}. Archivos en el backup: {files.Count}.";
-        });
-    }
-
-    private async void Sync_Click(object sender, RoutedEventArgs e)
-    {
-        await RunAsync(async () =>
+        }
+        catch (Exception ex)
         {
-            EnabledBox.IsChecked = true;
-            if (!SaveSettings())
-            {
-                return;
-            }
-
-            StatusText.Text = "Respaldando…";
-            Progress.Value = 0;
-            Progress.Visibility = Visibility.Visible;
-            var result = await _backup.Service.SyncAsync(
-                CancellationToken.None,
-                new Progress<double>(p => Progress.Value = p));
-            StatusText.Text = BackupCoordinator.Describe(result);
-        });
+            StatusText.Text = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            TestButton.IsEnabled = SaveButton.IsEnabled = true;
+            _busy = false;
+        }
     }
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
         if (SaveSettings())
         {
-            if (_backup.IsActive)
-            {
-                _backup.SyncInBackground();
-            }
-
             DialogResult = true;
         }
     }
@@ -117,30 +104,5 @@ public partial class BackupSettingsWindow : Window
         }
 
         return true;
-    }
-
-    private async Task RunAsync(Func<Task> action)
-    {
-        if (_busy)
-        {
-            return;
-        }
-
-        _busy = true;
-        TestButton.IsEnabled = SyncButton.IsEnabled = SaveButton.IsEnabled = false;
-        try
-        {
-            await action();
-        }
-        catch (Exception ex)
-        {
-            StatusText.Text = $"Error: {ex.Message}";
-        }
-        finally
-        {
-            Progress.Visibility = Visibility.Collapsed;
-            TestButton.IsEnabled = SyncButton.IsEnabled = SaveButton.IsEnabled = true;
-            _busy = false;
-        }
     }
 }

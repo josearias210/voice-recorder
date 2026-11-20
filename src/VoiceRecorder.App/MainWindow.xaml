@@ -234,11 +234,17 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ListBox>
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,10,0,0">
-                        <Button Content="Abrir chat" Style="{StaticResource SecondaryButton}" Click="OpenSession_Click" />
-                        <Button Content="Eliminar" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="DeleteSession_Click" />
-                        <Button Content="Carpeta" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="OpenSessionFolder_Click"
-                                ToolTip="Abre la carpeta de la sesión seleccionada (transcripción y audio), o la carpeta de sesiones" />
+                    <StackPanel Grid.Row="3" Margin="0,10,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Abrir chat" Style="{StaticResource SecondaryButton}" Click="OpenSession_Click" />
+                            <Button Content="Eliminar" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="DeleteSession_Click" />
+                            <Button Content="Carpeta" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="OpenSessionFolder_Click"
+                                    ToolTip="Abre la carpeta de la sesión seleccionada (transcripción y audio), o la carpeta de sesiones" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button Content="☁ Sincronizar…" Style="{StaticResource SecondaryButton}" Click="SyncBackup_Click"
+                                    ToolTip="Compara lo que hay en local con el backup externo (falta subir, falta bajar, distinto, sincronizado) y sube o baja a mano" />
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </Border>

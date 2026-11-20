@@ -58,17 +58,33 @@ public sealed class AzureBlobBackupTarget : IBackupTarget
         await _container.CreateIfNotExistsAsync(PublicAccessType.None, cancellationToken: cancellationToken);
     }
 
-    public async Task<IReadOnlyDictionary<string, byte[]?>> ListAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyDictionary<string, RemoteFile>> ListAsync(CancellationToken cancellationToken)
     {
-        var result = new Dictionary<string, byte[]?>(StringComparer.Ordinal);
+        var result = new Dictionary<string, RemoteFile>(StringComparer.Ordinal);
         await foreach (var blob in _container.GetBlobsAsync(
                            new GetBlobsOptions { Prefix = _prefix.Length > 0 ? _prefix : null },
                            cancellationToken))
         {
-            result[blob.Name[_prefix.Length..]] = blob.Properties.ContentHash;
+            var relative = blob.Name[_prefix.Length..];
+            result[relative] = new RemoteFile(
+                relative,
+                blob.Properties.ContentLength ?? 0,
+                blob.Properties.ContentHash,
+                blob.Properties.LastModified);
         }
 
         return result;
+    }
+
+    public async Task DownloadAsync(string relativePath, string localPath, CancellationToken cancellationToken)
+    {
+        await _container.GetBlobClient(_prefix + relativePath).DownloadToAsync(localPath, cancellationToken);
+    }
+
+    public async Task<string> ReadTextAsync(string relativePath, CancellationToken cancellationToken)
+    {
+        var content = await _container.GetBlobClient(_prefix + relativePath).DownloadContentAsync(cancellationToken);
+        return content.Value.Content.ToString();
     }
 
     public async Task UploadAsync(string relativePath, string localPath, byte[] md5, CancellationToken cancellationToken)

@@ -119,7 +119,15 @@ Cada sesión es una carpeta, sin base de datos:
 
 Si venías de una versión anterior, la antigua `sessions.db` se migra automáticamente al arrancar (se renombra a `sessions.db.migrated`, no se borra).
 
-**Backup externo (Azure Blob Storage)**: por defecto todo se queda en local. En **Backup externo…** (barra de ajustes) activa *Respaldar en Azure Blob Storage* e indica la cuenta de almacenamiento, el contenedor (se crea si no existe; por defecto `voice-recorder`) y la *access key* de la cuenta (o una cadena de conexión). La clave se guarda cifrada con DPAPI para tu usuario de Windows. A partir de ahí, cada sesión guardada o editada se copia al contenedor con **la misma estructura de carpetas**, y al arrancar se sube lo pendiente; *Respaldar ahora* fuerza una sincronización completa. Solo se suben archivos nuevos o cambiados (comparación MD5) y borrar una sesión en local **no** la borra del backup.
+**Backup externo (Azure Blob Storage)**: por defecto todo se queda en local. En **Backup externo…** (barra de ajustes) activa *Usar backup en Azure Blob Storage* e indica la cuenta de almacenamiento, el contenedor (se crea si no existe; por defecto `voice-recorder`) y la *access key* de la cuenta (o una cadena de conexión). La clave se guarda cifrada con DPAPI para tu usuario de Windows.
+
+El backup es **siempre manual**: la app nunca sube ni baja nada por su cuenta. Pulsa **☁ Sincronizar…** (bajo el historial) y verás la comparación entre local y la nube, archivo por archivo (MD5):
+
+- **Sincronizado al N %** y cuatro contadores: ✓ sincronizados (iguales en ambos lados), ⬆ en local y no arriba (falta subir), ⬇ arriba y no en local (falta bajar) y ≠ en ambos con contenido distinto.
+- La lista de sesiones con el estado de cada una (filtrable); pasando el ratón se ve el estado de cada archivo.
+- **⬆ Subir marcadas** sube lo que falta y reemplaza en la nube los archivos con el mismo nombre que cambiaron; los idénticos no se vuelven a subir.
+- **⬇ Bajar marcadas** descarga a este equipo lo que falta (p. ej. al usar la app en otro ordenador), con la misma estructura de carpetas; *sobrescribir archivos locales distintos* reemplaza también los que hayan cambiado. Las sesiones descargadas aparecen en el historial al momento.
+- Nunca se borra nada en la nube: borrar una sesión en local **no** la borra del backup.
 
 ## ⚙️ Cómo funciona
 

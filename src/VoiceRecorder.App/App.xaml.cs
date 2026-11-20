@@ -86,7 +86,7 @@ public partial class App : System.Windows.Application
 
         _backup = new BackupCoordinator(settings, _store);
         var viewModel = new MainViewModel(_store, models, new WasapiDeviceEnumerator(), themes, settings);
-        _backup.StatusChanged += text => Current.Dispatcher.BeginInvoke(() => viewModel.StatusText = text);
+        _backup.SessionsDownloaded += () => Current.Dispatcher.BeginInvoke(() => viewModel.LoadHistory(viewModel.SearchText));
         if (migrationError is not null)
         {
             viewModel.StatusText = $"No se pudieron migrar las sesiones antiguas (sessions.db): {migrationError}";
@@ -112,9 +112,6 @@ public partial class App : System.Windows.Application
         InitTray(viewModel);
         _mainWindow.Show();
         UpdateTrayState(viewModel.StateText);
-
-        // Backup externo: sube lo pendiente al arrancar.
-        _backup.SyncInBackground();
 
         // Comprobación de actualizaciones en segundo plano (5s tras arrancar).
         _ = viewModel.CheckForUpdatesDelayedAsync();

@@ -237,7 +237,13 @@ public sealed class FileSessionStore : ISessionFileStore
         string notes,
         IReadOnlyList<TranscriptSegment> segments)
     {
-        var folder = Path.Combine(RootDirectory, BuildRelativeFolder(id, startedAt).Replace('/', Path.DirectorySeparatorChar));
+        var baseFolder = Path.Combine(RootDirectory, BuildRelativeFolder(id, startedAt).Replace('/', Path.DirectorySeparatorChar));
+        var folder = baseFolder;
+        for (var i = 2; Directory.Exists(folder); i++)
+        {
+            folder = $"{baseFolder}-{i}"; // Carpeta ya usada (p. ej. sesión descargada de otro equipo).
+        }
+
         Directory.CreateDirectory(folder);
         Write(folder, new SessionFile(
             1,
@@ -259,18 +265,76 @@ public sealed class FileSessionStore : ISessionFileStore
         }
     }
 
+    /// <summary>
+    /// Vuelve a explorar la carpeta raíz para registrar sesiones añadidas desde
+    /// fuera (p. ej. descargadas del respaldo). Devuelve cuántas son nuevas.
+    /// </summary>
+    public int Refresh()
+    {
+        int added;
+        lock (_gate)
+        {
+            var before = _folders.Count;
+            ScanFolders();
+            added = _folders.Count - before;
+        }
+
+        return added;
+    }
+
+    /// <summary>Lee los datos básicos de un <c>session.json</c>, o null si no es válido.</summary>
+    public static SessionInfo? TryParseSessionInfo(string json)
+    {
+        try
+        {
+            var data = JsonSerializer.Deserialize<SessionFile>(json, JsonOptions);
+            return data is null ? null : new SessionInfo(data.Id, data.Title ?? string.Empty, data.StartedAt, data.Segments?.Count ?? 0);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Registra las carpetas con <c>session.json</c> aún no conocidas. Si el Id
+    /// guardado ya lo usa otra carpeta (sesiones de otro equipo), se le asigna
+    /// un Id nuevo solo en memoria: el archivo no se modifica, así no cambia
+    /// respecto a la copia del respaldo.
+    /// </summary>
     private void ScanFolders()
     {
+        var known = new HashSet<string>(_folders.Values, StringComparer.OrdinalIgnoreCase);
+        var pending = new List<(string Folder, SessionFile Data)>();
         foreach (var file in Directory.EnumerateFiles(RootDirectory, SessionFileName, SearchOption.AllDirectories))
         {
             var folder = Path.GetDirectoryName(file)!;
-            if (TryRead(folder) is not { } data || data.Id <= 0 || _folders.ContainsKey(data.Id))
+            if (known.Contains(folder) || TryRead(folder) is not { } data)
             {
                 continue;
             }
 
-            _folders[data.Id] = folder;
-            _lastId = Math.Max(_lastId, data.Id);
+            pending.Add((folder, data));
+        }
+
+        // Primero los que conservan su Id; después los duplicados, con Id nuevo.
+        var duplicates = new List<string>();
+        foreach (var (folder, data) in pending.OrderBy(p => p.Folder, StringComparer.Ordinal))
+        {
+            if (data.Id > 0 && !_folders.ContainsKey(data.Id))
+            {
+                _folders[data.Id] = folder;
+                _lastId = Math.Max(_lastId, data.Id);
+            }
+            else
+            {
+                duplicates.Add(folder);
+            }
+        }
+
+        foreach (var folder in duplicates)
+        {
+            _folders[++_lastId] = folder;
         }
     }
 
@@ -347,6 +411,9 @@ public sealed class FileSessionStore : ISessionFileStore
         File.WriteAllText(temp, JsonSerializer.Serialize(data, JsonOptions));
         File.Move(temp, path, overwrite: true);
     }
+
+    /// <summary>Datos básicos de una sesión leídos de su <c>session.json</c>.</summary>
+    public sealed record SessionInfo(long Id, string Title, DateTime StartedAt, int SegmentCount);
 
     /// <summary>Formato de <c>session.json</c>.</summary>
     internal sealed record SessionFile(

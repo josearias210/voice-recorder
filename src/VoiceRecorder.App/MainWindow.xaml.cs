@@ -64,6 +64,31 @@ public partial class MainWindow : Window
         new BackupSettingsWindow(_settings, _backup, fileStore.RootDirectory) { Owner = this }.ShowDialog();
     }
 
+    private void SyncBackup_Click(object sender, RoutedEventArgs e)
+    {
+        if (EnsureBackupConfigured())
+        {
+            new SyncWindow(_backup!) { Owner = this }.ShowDialog();
+        }
+    }
+
+    /// <summary>Si el backup no está configurado, abre su configuración. Devuelve si quedó activo.</summary>
+    private bool EnsureBackupConfigured()
+    {
+        if (_backup is null)
+        {
+            return false;
+        }
+
+        if (!_backup.IsActive)
+        {
+            ViewModel.StatusText = "Configura primero el backup externo (cuenta, contenedor y clave).";
+            Backup_Click(this, new RoutedEventArgs());
+        }
+
+        return _backup.IsActive;
+    }
+
     private void OpenSessionFolder_Click(object sender, RoutedEventArgs e)
     {
         if (_store is not ISessionFileStore fileStore)

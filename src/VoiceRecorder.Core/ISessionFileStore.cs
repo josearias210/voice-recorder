@@ -12,6 +12,12 @@ public interface ISessionFileStore : ISessionStore
     /// <summary>Se dispara tras crear, modificar o adjuntar archivos a una sesión.</summary>
     event Action? Changed;
 
+    /// <summary>
+    /// Vuelve a explorar la carpeta raíz para registrar sesiones añadidas desde
+    /// fuera (p. ej. descargadas del respaldo). Devuelve cuántas son nuevas.
+    /// </summary>
+    int Refresh();
+
     /// <summary>Carpeta de la sesión, o null si no existe.</summary>
     string? GetSessionFolder(long id);
 
