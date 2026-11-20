@@ -6,6 +6,13 @@
 
 1. **Abre un issue** antes de cambios grandes (features, refactors) para alinear el diseño.
 2. Haz fork y crea una rama descriptiva: `feat/transcripcion-bilingue`, `fix/vad-ruido-fondo`, …
+   Activa una vez el hook que impide hacer commit de claves o tokens (solo requiere Docker):
+
+   ```powershell
+   .\scripts\docker.ps1 hooks
+   ```
+
+   **Nunca subas secretos** (API keys, tokens, contraseñas, certificados): usa variables de entorno o los secretos de GitHub Actions. Si alguno se sube por error, revócalo de inmediato.
 3. Asegúrate de que compila y pasa los tests. Con Docker (no requiere instalar .NET):
 
    ```powershell

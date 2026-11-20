@@ -22,6 +22,13 @@ Incluye: descripción, pasos para reproducir, impacto estimado y, si es posible,
 Voice Recorder procesa audio de llamadas en local. Puntos sensibles del diseño:
 
 - **Sin telemetría ni servidores propios**: la app solo usa la red para (1) descargar modelos cuando el usuario lo pide (Whisper desde Hugging Face; Silero VAD desde GitHub, fijado a la etiqueta `v5.1.2` y verificado por SHA256) y (2) consultar y descargar actualizaciones desde GitHub Releases en las instalaciones con Setup.
-- **Sin secretos en el repositorio**: el código no contiene claves, tokens ni credenciales. El workflow de publicación solo usa el `GITHUB_TOKEN` efímero que proporciona GitHub Actions. El CI ejecuta [gitleaks](https://github.com/gitleaks/gitleaks) en cada push y PR para impedir que se suba un secreto por error.
+- **Sin secretos en el repositorio**: el código no contiene claves, tokens ni credenciales. El workflow de publicación solo usa el `GITHUB_TOKEN` efímero que proporciona GitHub Actions. Hay varias barreras, de la más cercana al desarrollador a la publicación:
+  1. **Hook `pre-commit`** (`.githooks/pre-commit`): revisa con [gitleaks](https://github.com/gitleaks/gitleaks) los cambios preparados antes de cada commit. Se activa una vez por clon con `.\scripts\docker.ps1 hooks` (solo requiere Docker).
+  2. **Push protection de GitHub**: rechaza un `git push` que contenga un secreto reconocido de un proveedor (GitHub, AWS, Azure, Google…).
+  3. **CI** (`ci.yml`): gitleaks revisa **todo el historial** en cada push y PR; un hallazgo hace fallar el PR y se publica en *Security → Code scanning*.
+  4. **Release** (`release.yml`): no se genera ningún paquete si el historial etiquetado contiene un secreto, y además se revisan los archivos que se van a distribuir antes de empaquetarlos.
+  5. **Secret scanning de GitHub**: avisa de cualquier secreto de proveedor que aparezca en el repositorio.
+
+  Si un secreto llega a subirse, **revócalo y genera uno nuevo de inmediato**: borrarlo en un commit posterior no basta, porque sigue en el historial y en los clones existentes.
 - **Datos locales**: transcripciones y configuración viven en `%LOCALAPPDATA%\VoiceRecorder` sin cifrar; cualquiera con acceso a tu perfil de Windows puede leerlas. Protege tu cuenta y tu disco (por ejemplo, con BitLocker). Reporta cualquier mecanismo que permita exfiltrarlas o ejecutar código con permisos del usuario.
 - **Integridad de los paquetes**: cada release publica `SHA256SUMS.txt` y GitHub muestra el digest SHA256 de cada archivo; compruébalo antes de instalar (`Get-FileHash VoiceRecorder-win-Setup.exe`). El instalador aún no está firmado con certificado de código, por lo que Windows SmartScreen puede advertir al ejecutarlo.

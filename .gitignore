@@ -494,3 +494,6 @@ installer/output/
 /releases/
 !docs/releases/
 !docs/releases/*.md
+
+# Informe de gitleaks generado en el CI
+gitleaks.sarif

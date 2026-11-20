@@ -14,8 +14,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Barrera previa: no se publica nada si el historial que se va a etiquetar
+  # contiene una clave, token o credencial.
+  secrets-scan:
+    name: Secrets scan (gitleaks)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks (todo el historial)
+        run: >-
+          docker run --rm -v "${{ github.workspace }}:/repo:ro"
+          -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*'
+          zricethezav/gitleaks:v8.30.1 git /repo --redact --no-banner --exit-code 1
+
   release:
     name: Velopack installer + scoop bucket + GitHub release
+    needs: secrets-scan
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -64,6 +84,24 @@ jobs:
           }
           $actual = (Get-Item 'publish/VoiceRecorder.exe').VersionInfo.ProductVersion.Split('+')[0]
           if ($actual -ne '${{ steps.version.outputs.version }}') { throw "Versión incorrecta: $actual" }
+
+      # Segunda barrera: revisa los archivos que de verdad se van a distribuir
+      # (configuración, .json, .md…), por si la compilación copiara un secreto
+      # que no está en git (variables de entorno, archivos locales del runner).
+      - name: Scan package for secrets (gitleaks)
+        shell: pwsh
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: d29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'gitleaks.zip'
+          Invoke-WebRequest "https://github.com/gitleaks/gitleaks/releases/download/v$env:GITLEAKS_VERSION/gitleaks_${env:GITLEAKS_VERSION}_windows_x64.zip" -OutFile $zip
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash
+          if ($hash -ne $env:GITLEAKS_SHA256) { throw "Checksum de gitleaks incorrecto: $hash" }
+          $dir = Join-Path $env:RUNNER_TEMP 'gitleaks'
+          Expand-Archive $zip $dir -Force
+          & "$dir/gitleaks.exe" dir publish --redact --no-banner --exit-code 1
+          if ($LASTEXITCODE -ne 0) { throw 'gitleaks encontró posibles secretos en el paquete; no se publica.' }
 
       - name: Install Velopack CLI
         run: dotnet tool update --global vpk --version 1.2.161

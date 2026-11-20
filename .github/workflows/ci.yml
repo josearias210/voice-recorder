@@ -18,17 +18,34 @@ jobs:
   secrets-scan:
     name: Secrets scan (gitleaks)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Publica los hallazgos en la pestaña Security → Code scanning.
+      security-events: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
+      # Revisa TODO el historial (no solo el último commit): un secreto borrado
+      # en un commit posterior sigue siendo público en el historial de git.
       - name: Gitleaks (todo el historial)
         run: >-
           docker run --rm -v "${{ github.workspace }}:/repo"
           -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*'
           zricethezav/gitleaks:v8.30.1 git /repo --redact --no-banner --exit-code 1
+          --report-format sarif --report-path /repo/gitleaks.sarif
+
+      # Los PR desde forks no tienen permiso de escritura: ahí solo falla el
+      # paso anterior, que es el que bloquea el PR.
+      - name: Upload gitleaks report
+        if: always() && hashFiles('gitleaks.sarif') != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: gitleaks.sarif
+          category: gitleaks
 
   build-test:
     name: Build & Test (Windows)
