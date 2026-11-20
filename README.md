@@ -83,9 +83,9 @@ Requisitos: [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0) y W
 
 Activa la casilla **Grabar audio y transcribir al detener** si tu equipo va justo o prefieres el texto al final:
 
-1. Pulsa **▶ Iniciar**: arranca al instante (no carga modelos) y graba dos WAV por sesión — `grabacion-<fecha>-micro.wav` y `grabacion-<fecha>-llamada.wav` — en `%LOCALAPPDATA%\VoiceRecorder\audio`.
-2. Pulsa **■ Detener**: se transcribe el audio grabado (con la atribución `Yo`/`Ellos` de cada canal) y la sesión se guarda con las rutas del audio en las notas.
-3. El audio se conserva en disco (≈115 MB/hora por canal); puedes borrarlo cuando quieras desde esa carpeta. Si falla la transcripción, la sesión conserva las rutas para volver a importar los WAV.
+1. Pulsa **▶ Iniciar**: arranca al instante (no carga modelos) y graba dos WAV por sesión — `grabacion-<fecha>-micro.wav` y `grabacion-<fecha>-llamada.wav` — en `%LOCALAPPDATA%\VoiceRecorder\audio` mientras graba.
+2. Pulsa **■ Detener**: se transcribe el audio grabado (con la atribución `Yo`/`Ellos` de cada canal), la sesión se guarda y los WAV se mueven a la carpeta de la sesión (sus rutas quedan en las notas).
+3. El audio se conserva en disco (≈115 MB/hora por canal); el botón **Carpeta** del historial abre la carpeta de la sesión. Si falla la transcripción, la sesión conserva las rutas para volver a importar los WAV.
 
 ### Transcribir archivos de audio o vídeo
 
@@ -104,6 +104,22 @@ Arrastra uno o varios archivos a la ventana, o pulsa **Transcribir archivo…**.
 | Small (Q5) | ~180 MB | Máxima precisión |
 
 Los modelos se almacenan en `%LOCALAPPDATA%\VoiceRecorder\models`.
+
+### Dónde se guardan las sesiones y backup externo
+
+Cada sesión es una carpeta, sin base de datos:
+
+```text
+%LOCALAPPDATA%\VoiceRecorder\Sesiones\
+└── 2026\11\20261119-093005-00012\
+    ├── session.json            ← título, fecha, etiquetas, notas y transcripción
+    ├── grabacion-…-micro.wav   ← solo en el modo «grabar audio primero»
+    └── grabacion-…-llamada.wav
+```
+
+Si venías de una versión anterior, la antigua `sessions.db` se migra automáticamente al arrancar (se renombra a `sessions.db.migrated`, no se borra).
+
+**Backup externo (Azure Blob Storage)**: por defecto todo se queda en local. En **Backup externo…** (barra de ajustes) activa *Respaldar en Azure Blob Storage* e indica la cuenta de almacenamiento, el contenedor (se crea si no existe; por defecto `voice-recorder`) y la *access key* de la cuenta (o una cadena de conexión). La clave se guarda cifrada con DPAPI para tu usuario de Windows. A partir de ahí, cada sesión guardada o editada se copia al contenedor con **la misma estructura de carpetas**, y al arrancar se sube lo pendiente; *Respaldar ahora* fuerza una sincronización completa. Solo se suben archivos nuevos o cambiados (comparación MD5) y borrar una sesión en local **no** la borra del backup.
 
 ## ⚙️ Cómo funciona
 
@@ -190,7 +206,7 @@ Ver [CONTRIBUTING.md](CONTRIBUTING.md) para convenciones y flujo de PRs.
 
 - El audio de las llamadas se procesa **íntegramente en tu equipo** (Whisper + Silero VAD locales).
 - No hay telemetría, analytics ni informes de fallos. Lo único que sale de tu equipo son las descargas de modelos que tú inicias y la comprobación de actualizaciones contra GitHub Releases.
-- Las transcripciones se guardan en tu disco local (`%LOCALAPPDATA%\VoiceRecorder`); el audio solo se escribe a disco si activas el modo «Grabar audio primero».
+- Las transcripciones se guardan en tu disco local (`%LOCALAPPDATA%\VoiceRecorder\Sesiones`) y solo salen de él si activas el backup externo a tu propia cuenta de Azure; el audio solo se escribe a disco si activas el modo «Grabar audio primero».
 - Detalles completos en [PRIVACY.md](PRIVACY.md).
 - Respeta la legislación y el consentimiento de tu jurisdicción antes de grabar conversaciones — lee el [aviso legal](DISCLAIMER.md).
 

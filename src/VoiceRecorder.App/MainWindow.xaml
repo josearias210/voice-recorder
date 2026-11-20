@@ -88,7 +88,7 @@
                         Margin="22,0,0,0" Style="{StaticResource SecondaryButton}" />
                 <CheckBox Content="Grabar audio y transcribir al detener" IsChecked="{Binding RecordAudioFirst}"
                           IsEnabled="{Binding CanStart}" Margin="22,0,0,0" VerticalAlignment="Center"
-                          ToolTip="Modo sin transcripción en vivo: guarda el audio (micrófono y llamada por separado) en WAV y lo transcribe al pulsar Detener. El arranque es instantáneo y el texto llega al final. El audio se conserva en %LOCALAPPDATA%\VoiceRecorder\audio." />
+                          ToolTip="Modo sin transcripción en vivo: guarda el audio (micrófono y llamada por separado) en WAV y lo transcribe al pulsar Detener. El arranque es instantáneo y el texto llega al final. El audio se conserva junto a la sesión en %LOCALAPPDATA%\VoiceRecorder\Sesiones." />
                 <Ellipse Style="{StaticResource LiveDot}" Margin="24,0,7,0" />
                 <TextBlock Text="{Binding StateText}" FontWeight="Bold" FontSize="14" VerticalAlignment="Center">
                     <TextBlock.Style>
@@ -237,6 +237,8 @@
                     <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,10,0,0">
                         <Button Content="Abrir chat" Style="{StaticResource SecondaryButton}" Click="OpenSession_Click" />
                         <Button Content="Eliminar" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="DeleteSession_Click" />
+                        <Button Content="Carpeta" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="OpenSessionFolder_Click"
+                                ToolTip="Abre la carpeta de la sesión seleccionada (transcripción y audio), o la carpeta de sesiones" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -261,6 +263,8 @@
                 <TextBlock Text="Tema:" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="18,0,0,0" />
                 <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedValue="{Binding SelectedTheme}" SelectedValuePath="Theme"
                           DisplayMemberPath="Name" MinWidth="110" Margin="8,0,0,0" VerticalContentAlignment="Center" />
+                <Button Content="Backup externo…" Click="Backup_Click" Style="{StaticResource SecondaryButton}"
+                        Margin="18,0,0,0" ToolTip="Copia de las sesiones en Azure Blob Storage (con la misma estructura que en local)" />
             </StackPanel>
         </Border>
 

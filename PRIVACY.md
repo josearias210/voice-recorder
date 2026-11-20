@@ -1,6 +1,6 @@
 # 🔒 Política de privacidad — Voice Recorder
 
-> Última actualización: 2026-11-16 · Aplica a partir de la versión 1.3.1
+> Última actualización: 2026-11-19 · Aplica a partir de la versión posterior a 1.3.3
 
 **En una frase:** Voice Recorder procesa todo el audio **en tu equipo**; el texto y el audio nunca salen de tu disco salvo cuando tú decides descargar un modelo o aceptar una actualización.
 
@@ -14,24 +14,25 @@ Todo se almacena localmente en tu perfil de usuario (`%LOCALAPPDATA%\VoiceRecord
 
 | Ruta | Contenido | Cuándo |
 |------|-----------|--------|
-| `sessions.db` | Sesiones guardadas: título, fecha, duración, etiquetas, notas y los **textos** transcritos con sus marcas de tiempo. | Al pulsar *Detener* o al importar archivos. |
-| `settings.json` | Preferencias: modelo, idioma, micrófono seleccionado, modo de grabación y la versión del aviso legal que aceptaste. | Siempre que cambias un ajuste o aceptas el aviso. |
+| `Sesiones\AAAA\MM\<fecha>-<id>\` | Una carpeta por sesión: `session.json` (título, fecha, duración, etiquetas, notas y los **textos** transcritos con sus marcas de tiempo) y, en el modo «grabar primero», sus WAV. | Al pulsar *Detener* o al importar archivos. (La antigua `sessions.db` se migra una vez y se renombra a `sessions.db.migrated`.) |
+| `settings.json` | Preferencias: modelo, idioma, micrófono seleccionado, modo de grabación, la versión del aviso legal que aceptaste y, si lo configuras, el backup externo (cuenta, contenedor y la clave **cifrada con DPAPI** para tu usuario de Windows). | Siempre que cambias un ajuste o aceptas el aviso. |
 | `models\` | Los modelos de transcripción y VAD que descargues. | Al descargarlos desde la app. |
-| `audio\` | Grabaciones WAV del micrófono y de la llamada, **solo si activas el modo «Grabar audio y transcribir al detener»** (opcional, desactivado por defecto). | Solo en ese modo; las rutas quedan anotadas en las notas de la sesión. |
+| `audio\` | WAV temporales del micrófono y de la llamada mientras se graba, **solo si activas el modo «Grabar audio y transcribir al detener»** (opcional, desactivado por defecto). | Solo en ese modo; al guardar la sesión se mueven a su carpeta en `Sesiones\` y sus rutas quedan en las notas. |
 
 En el modo por defecto (transcripción en vivo) el audio **vive únicamente en memoria** y se descarta: nunca se escribe en disco.
 
 ## 3. Cuándo sale información de tu equipo
 
-Solo en estos tres casos, y nunca con contenido de tus conversaciones:
+Solo en estos casos. Los tres primeros nunca incluyen contenido de tus conversaciones; el cuarto sí, y solo si tú lo activas:
 
 1. **Descarga de modelos** (la inicias tú): el modelo Whisper se descarga desde Hugging Face y el modelo Silero VAD desde GitHub (versión fijada y verificada por SHA256). Se hace una única vez por modelo.
 2. **Comprobación de actualizaciones**: si instalaste la app con el instalador, unos segundos tras arrancar (o cuando pulsas *Buscar actualizaciones*) se consulta GitHub Releases para saber si hay una versión nueva (petición HTTPS estándar: tu IP y cabeceras habituales, sujeta a la [política de privacidad de GitHub](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement)). Solo se descarga una actualización si pulsas *Actualizar y reiniciar*. Las builds portable no comprueban actualizaciones.
 3. **Instalación vía gestores de paquetes**: Scoop descarga los instalables desde GitHub Releases.
+4. **Backup externo (opcional, desactivado por defecto)**: si lo activas en *Backup externo…* con tu propia cuenta de Azure Blob Storage, la app sube por HTTPS una copia de la carpeta `Sesiones\` (transcripciones, notas y WAV) a **tu** contenedor, con la misma estructura. Solo añade o actualiza archivos: borrar una sesión en local no la borra del backup. Esos datos quedan sujetos a la configuración y la [política de privacidad de Microsoft Azure](https://privacy.microsoft.com/privacystatement).
 
 El autor de la aplicación **no opera ningún servidor** y no recibe ningún dato tuyo: estas descargas van directamente a GitHub o Hugging Face.
 
-La aplicación **no incluye telemetría, analytics, informes de fallos, publicidad ni rastreadores** de ningún tipo. Ninguna parte de tus transcripciones, notas, audio ni metadatos se envía a ningún servidor.
+La aplicación **no incluye telemetría, analytics, informes de fallos, publicidad ni rastreadores** de ningún tipo. Salvo el backup externo que tú configures, ninguna parte de tus transcripciones, notas, audio ni metadatos se envía a ningún servidor.
 
 ## 4. Permisos que utiliza
 
@@ -40,9 +41,9 @@ La aplicación **no incluye telemetría, analytics, informes de fallos, publicid
 
 ## 5. Cómo eliminar tus datos
 
-- **Sesiones concretas**: botón *Eliminar sesión* en la app (borra textos y metadatos de la base de datos).
-- **Grabaciones del modo «grabar primero»**: borra los archivos en `%LOCALAPPDATA%\VoiceRecorder\audio`.
-- **Todo de golpe**: desinstala la app y borra la carpeta `%LOCALAPPDATA%\VoiceRecorder`. No se guarda nada fuera de esa carpeta.
+- **Sesiones concretas**: botón *Eliminar sesión* en la app (borra la carpeta de la sesión en local; las copias del backup externo se borran desde tu cuenta de Azure).
+- **Grabaciones del modo «grabar primero»**: están en la carpeta de cada sesión (botón *Carpeta* del historial).
+- **Todo de golpe**: desinstala la app y borra la carpeta `%LOCALAPPDATA%\VoiceRecorder`. No se guarda nada fuera de esa carpeta, salvo el backup externo si lo activaste.
 
 ## 6. Quién es responsable de los datos
 
@@ -50,10 +51,10 @@ Las transcripciones, notas y grabaciones se generan y guardan **solo en tu equip
 
 ## 7. Componentes de terceros
 
-La app usa bibliotecas open source que se ejecutan localmente: Whisper.net (whisper.cpp), Microsoft ML OnnxRuntime (Silero VAD), NAudio (WASAPI), Microsoft.Data.Sqlite y Velopack (auto-actualización). Sus licencias están en los paquetes NuGet correspondientes. Ver [DISCLAIMER.md](DISCLAIMER.md) para la exención de responsabilidad.
+La app usa bibliotecas open source que se ejecutan localmente: Whisper.net (whisper.cpp), Microsoft ML OnnxRuntime (Silero VAD), NAudio (WASAPI), Microsoft.Data.Sqlite (migración de datos antiguos), Azure.Storage.Blobs (backup externo opcional) y Velopack (auto-actualización). Sus licencias están en los paquetes NuGet correspondientes. Ver [DISCLAIMER.md](DISCLAIMER.md) para la exención de responsabilidad.
 
 ---
 
 ## English (TL;DR)
 
-Voice Recorder processes all audio **locally on your machine** (Whisper + Silero VAD, no cloud). Transcripts, notes and settings live in `%LOCALAPPDATA%\VoiceRecorder`. Audio is only written to disk if you enable the optional *record-first* mode. The app has **no telemetry, analytics or crash reporting**; the only network traffic is model downloads you trigger and an update check against GitHub Releases (installed builds). Delete everything by uninstalling and removing that folder. Recording conversations may require the consent of all parties — see [DISCLAIMER.md](DISCLAIMER.md).
+Voice Recorder processes all audio **locally on your machine** (Whisper + Silero VAD, no cloud). Transcripts, notes and settings live in `%LOCALAPPDATA%\VoiceRecorder`. Audio is only written to disk if you enable the optional *record-first* mode. Sessions are stored as folders (`Sesiones\YYYY\MM\...`); an optional, off-by-default external backup copies them to your own Azure Blob Storage container (key encrypted with DPAPI). The app has **no telemetry, analytics or crash reporting**; the only network traffic is model downloads you trigger and an update check against GitHub Releases (installed builds). Delete everything by uninstalling and removing that folder. Recording conversations may require the consent of all parties — see [DISCLAIMER.md](DISCLAIMER.md).

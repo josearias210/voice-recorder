@@ -58,4 +58,38 @@ public class SettingsServiceTests : IDisposable
 
         Assert.Null(restarted.LanguageCode);
     }
+
+    [Fact]
+    public void Backup_Se_Persiste_Y_La_Clave_Se_Guarda_Cifrada()
+    {
+        var original = new SettingsService(_dataDir)
+        {
+            BackupEnabled = true,
+            BackupAccountName = "micuenta",
+            BackupContainer = "voice-recorder",
+        };
+        original.SetBackupKey("clave-secreta-de-prueba");
+        original.Save();
+
+        Assert.DoesNotContain("clave-secreta-de-prueba", File.ReadAllText(Path.Combine(_dataDir, "settings.json")));
+
+        var restarted = new SettingsService(_dataDir);
+        restarted.Load();
+        Assert.True(restarted.BackupEnabled);
+        Assert.Equal("micuenta", restarted.BackupAccountName);
+        Assert.Equal("voice-recorder", restarted.BackupContainer);
+        Assert.True(restarted.HasBackupKey);
+        Assert.Equal("clave-secreta-de-prueba", restarted.GetBackupKey());
+    }
+
+    [Fact]
+    public void Backup_Desactivado_Por_Defecto()
+    {
+        var service = new SettingsService(_dataDir);
+        service.Load();
+
+        Assert.False(service.BackupEnabled);
+        Assert.False(service.HasBackupKey);
+        Assert.Null(service.GetBackupKey());
+    }
 }

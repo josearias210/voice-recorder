@@ -19,7 +19,8 @@ public partial class App : System.Windows.Application
     private static WinForms.ToolStripMenuItem? _menuItemPause;
     private static WinForms.ToolStripMenuItem? _menuItemStop;
     private static MainWindow? _mainWindow;
-    private static SQLiteSessionStore? _store;
+    private static FileSessionStore? _store;
+    private static BackupCoordinator? _backup;
     private static Mutex? _instanceMutex;
     private static EventWaitHandle? _activateEvent;
     private static System.Threading.RegisteredWaitHandle? _activateRegistration;
@@ -61,7 +62,6 @@ public partial class App : System.Windows.Application
         var dataDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "VoiceRecorder");
-        _store = new SQLiteSessionStore(Path.Combine(dataDir, "sessions.db"));
         var models = new ModelManager();
         var themes = new ThemeService();
         themes.Initialize();
@@ -72,8 +72,27 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        // Sesiones en carpetas (Sesiones\AAAA\MM\...); la antigua sessions.db se migra una vez.
+        _store = new FileSessionStore(Path.Combine(dataDir, "Sesiones"));
+        string? migrationError = null;
+        try
+        {
+            SqliteMigration.MigrateIfNeeded(Path.Combine(dataDir, "sessions.db"), _store);
+        }
+        catch (Exception ex)
+        {
+            migrationError = ex.Message;
+        }
+
+        _backup = new BackupCoordinator(settings, _store);
         var viewModel = new MainViewModel(_store, models, new WasapiDeviceEnumerator(), themes, settings);
-        _mainWindow = new MainWindow(viewModel, _store);
+        _backup.StatusChanged += text => Current.Dispatcher.BeginInvoke(() => viewModel.StatusText = text);
+        if (migrationError is not null)
+        {
+            viewModel.StatusText = $"No se pudieron migrar las sesiones antiguas (sessions.db): {migrationError}";
+        }
+
+        _mainWindow = new MainWindow(viewModel, _store, settings, _backup);
         _mainWindow.DataContext = viewModel;
         viewModel.PropertyChanged += (_, args) =>
         {
@@ -93,6 +112,9 @@ public partial class App : System.Windows.Application
         InitTray(viewModel);
         _mainWindow.Show();
         UpdateTrayState(viewModel.StateText);
+
+        // Backup externo: sube lo pendiente al arrancar.
+        _backup.SyncInBackground();
 
         // Comprobación de actualizaciones en segundo plano (5s tras arrancar).
         _ = viewModel.CheckForUpdatesDelayedAsync();
@@ -242,8 +264,7 @@ public partial class App : System.Windows.Application
 
         _activateRegistration?.Unregister(null);
         _activateEvent?.Dispose();
-        _store?.Dispose();
-        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+        _backup?.Dispose();
 
         try
         {

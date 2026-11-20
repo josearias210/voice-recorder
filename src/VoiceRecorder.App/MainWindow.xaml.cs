@@ -10,12 +10,20 @@ namespace VoiceRecorder.App;
 public partial class MainWindow : Window
 {
     private readonly ISessionStore _store;
+    private readonly Services.SettingsService? _settings;
+    private readonly Services.BackupCoordinator? _backup;
     private bool _exitRequested;
 
-    public MainWindow(MainViewModel viewModel, ISessionStore store)
+    public MainWindow(
+        MainViewModel viewModel,
+        ISessionStore store,
+        Services.SettingsService? settings = null,
+        Services.BackupCoordinator? backup = null)
     {
         InitializeComponent();
         _store = store;
+        _settings = settings;
+        _backup = backup;
         ViewModel = viewModel;
         DataContext = viewModel;
         viewModel.Segments.CollectionChanged += (_, _) =>
@@ -45,6 +53,29 @@ public partial class MainWindow : Window
 
     private void Privacy_Click(object sender, RoutedEventArgs e) =>
         Services.LegalNotice.OpenDocument("PRIVACY.md");
+
+    private void Backup_Click(object sender, RoutedEventArgs e)
+    {
+        if (_settings is null || _backup is null || _store is not ISessionFileStore fileStore)
+        {
+            return;
+        }
+
+        new BackupSettingsWindow(_settings, _backup, fileStore.RootDirectory) { Owner = this }.ShowDialog();
+    }
+
+    private void OpenSessionFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (_store is not ISessionFileStore fileStore)
+        {
+            return;
+        }
+
+        var folder = HistoryList.SelectedItem is SessionRowVm row
+            ? fileStore.GetSessionFolder(row.Id) ?? fileStore.RootDirectory
+            : fileStore.RootDirectory;
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"\"{folder}\"") { UseShellExecute = true });
+    }
 
     private void OpenSelectedSession()
     {

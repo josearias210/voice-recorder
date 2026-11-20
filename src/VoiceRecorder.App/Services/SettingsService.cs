@@ -1,4 +1,6 @@
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 
 namespace VoiceRecorder.App.Services;
@@ -9,17 +11,25 @@ internal sealed record SettingsData(
     string? LanguageCode,
     string? MicrophoneId,
     bool RecordAudioFirst = false,
-    string? AcceptedLegalNoticeVersion = null);
+    string? AcceptedLegalNoticeVersion = null,
+    bool BackupEnabled = false,
+    string? BackupAccountName = null,
+    string? BackupContainer = null,
+    string? BackupKeyProtected = null);
 
 /// <summary>
 /// Preferencias de usuario persistidas en %LOCALAPPDATA%\VoiceRecorder\settings.json
-/// (modelo Whisper, idioma, micrófono y modo de grabación).
+/// (modelo Whisper, idioma, micrófono, modo de grabación y respaldo externo).
+/// La clave del respaldo se guarda cifrada con DPAPI (solo la descifra el
+/// mismo usuario de Windows en este equipo).
 /// </summary>
 public sealed class SettingsService
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static readonly byte[] KeyEntropy = Encoding.UTF8.GetBytes("VoiceRecorder.Backup.v1");
 
     private readonly string _filePath;
+    private string? _backupKeyProtected;
 
     public SettingsService(string? dataDir = null)
     {
@@ -44,6 +54,45 @@ public sealed class SettingsService
     /// <summary>Versión del aviso legal (<see cref="LegalNotice.Version"/>) que el usuario aceptó.</summary>
     public string? AcceptedLegalNoticeVersion { get; set; }
 
+    /// <summary>Copia en Azure Blob Storage todo lo que se guarda en local (desactivado por defecto).</summary>
+    public bool BackupEnabled { get; set; }
+
+    /// <summary>Nombre de la cuenta de Azure Storage.</summary>
+    public string? BackupAccountName { get; set; }
+
+    /// <summary>Contenedor de blobs (por defecto "voice-recorder").</summary>
+    public string? BackupContainer { get; set; }
+
+    /// <summary>Indica si hay una clave de respaldo guardada.</summary>
+    public bool HasBackupKey => !string.IsNullOrEmpty(_backupKeyProtected);
+
+    /// <summary>Guarda (cifrada) la clave de la cuenta; null o vacío la borra.</summary>
+    public void SetBackupKey(string? key)
+    {
+        _backupKeyProtected = string.IsNullOrEmpty(key)
+            ? null
+            : Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(key), KeyEntropy, DataProtectionScope.CurrentUser));
+    }
+
+    /// <summary>Clave descifrada, o null si no hay o no se puede descifrar (otro usuario/equipo).</summary>
+    public string? GetBackupKey()
+    {
+        if (string.IsNullOrEmpty(_backupKeyProtected))
+        {
+            return null;
+        }
+
+        try
+        {
+            return Encoding.UTF8.GetString(
+                ProtectedData.Unprotect(Convert.FromBase64String(_backupKeyProtected), KeyEntropy, DataProtectionScope.CurrentUser));
+        }
+        catch (Exception ex) when (ex is CryptographicException or FormatException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>Carga las preferencias; si el archivo falta o está corrupto, quedan los valores por defecto.</summary>
     public void Load()
     {
@@ -65,6 +114,10 @@ public sealed class SettingsService
             MicrophoneId = data.MicrophoneId;
             RecordAudioFirst = data.RecordAudioFirst;
             AcceptedLegalNoticeVersion = data.AcceptedLegalNoticeVersion;
+            BackupEnabled = data.BackupEnabled;
+            BackupAccountName = data.BackupAccountName;
+            BackupContainer = data.BackupContainer;
+            _backupKeyProtected = data.BackupKeyProtected;
         }
         catch
         {
@@ -78,7 +131,16 @@ public sealed class SettingsService
         try
         {
             File.WriteAllText(_filePath, JsonSerializer.Serialize(
-                new SettingsData(ModelFileName, LanguageCode, MicrophoneId, RecordAudioFirst, AcceptedLegalNoticeVersion),
+                new SettingsData(
+                    ModelFileName,
+                    LanguageCode,
+                    MicrophoneId,
+                    RecordAudioFirst,
+                    AcceptedLegalNoticeVersion,
+                    BackupEnabled,
+                    BackupAccountName,
+                    BackupContainer,
+                    _backupKeyProtected),
                 JsonOptions));
         }
         catch

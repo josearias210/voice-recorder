@@ -27,7 +27,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\VoiceRecorder.Tests\BackupServiceTests.cs" Link="Shared\%(Filename)%(Extension)" />
     <Compile Include="..\VoiceRecorder.Tests\ConversationTranscriberTests.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="..\VoiceRecorder.Tests\FileSessionStoreTests.cs" Link="Shared\%(Filename)%(Extension)" />
     <Compile Include="..\VoiceRecorder.Tests\FileTranscriberTests.cs" Link="Shared\%(Filename)%(Extension)" />
     <Compile Include="..\VoiceRecorder.Tests\ModelManagerTests.cs" Link="Shared\%(Filename)%(Extension)" />
     <Compile Include="..\VoiceRecorder.Tests\SpeechSegmenterTests.cs" Link="Shared\%(Filename)%(Extension)" />
