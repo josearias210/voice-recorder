@@ -16,7 +16,7 @@ Meet · Teams · Zoom · WhatsApp Web · Discord — si suena en tu PC, se trans
 
 **[English below](#english)** · Aplicación de escritorio para **Windows** que transcribe **en vivo** las conversaciones de **cualquier app de llamadas**, sin drivers virtuales, sin nube y **sin guardar el audio**: solo la transcripción.
 
-> ⚖️ **Aviso legal**: software gratuito ofrecido **«tal cual», sin garantías**. El autor **no se hace responsable** del uso que se haga de la aplicación ni de sus consecuencias: **cada usuario es el único responsable** de cumplir la ley y de obtener el consentimiento de las personas que participan en una conversación antes de grabarla o transcribirla. La app pide aceptar este aviso al abrirse por primera vez. Lee el [aviso legal completo](DISCLAIMER.md) y la [política de privacidad](PRIVACY.md).
+> ⚖️ **Aviso legal**: software gratuito ofrecido **«tal cual», sin garantías**. El autor **no se hace responsable** del uso que se haga de la aplicación ni de sus consecuencias: **cada usuario es el único responsable** de cumplir la ley y de obtener el consentimiento de las personas que participan en una conversación antes de grabarla o transcribirla. Está diseñada para que **un participante transcriba su propia llamada**: siempre es visible, solo graba cuando pulsas *Iniciar* y no envía nada a nadie; **no se admite su uso para grabar a escondidas o vigilar a otras personas**. La app pide aceptar este aviso al abrirse por primera vez. Lee el [aviso legal completo](DISCLAIMER.md) y la [política de privacidad](PRIVACY.md).
 
 ## ✨ Características
 
@@ -42,6 +42,8 @@ Descarga `VoiceRecorder-win-Setup.exe` desde [Releases](../../releases/latest) y
 La app **se actualiza sola**: al arrancar comprueba si hay una versión nueva y te ofrece *Actualizar y reiniciar* (descarga incremental, sin reinstalar). También puedes pulsar **Buscar actualizaciones** en la barra inferior, donde se muestra la versión instalada (por ejemplo, `v1.3.0 · instalada`).
 
 > Requiere **Windows 10 2004+ / Windows 11** (64 bits). El modelo de transcripción se descarga dentro de la app (≈60 MB).
+
+> 🛡️ **«Windows protegió su PC»**: el instalador aún no está firmado con un certificado de código, así que SmartScreen puede avisar al abrirlo. Si lo descargaste de este repositorio, pulsa **Más información → Ejecutar de todas formas**, o instala con Scoop, que no muestra ese aviso. Puedes comprobar el archivo con `Get-FileHash VoiceRecorder-win-Setup.exe` y compararlo con `SHA256SUMS.txt` del release. Si tienes **Smart App Control** activado, Windows bloqueará la app hasta que esté firmada.
 
 ### Gestores de paquetes
 
@@ -210,4 +212,6 @@ Windows desktop app that transcribes **any call app** (Meet, Teams, Zoom, …) *
 - **Test**: `dotnet test`.
 - **License**: MIT.
 
-> ⚠️ Recording conversations may require the consent of all parties depending on your jurisdiction.
+> ⚠️ Recording conversations may require the consent of all parties depending on your jurisdiction. The app is built for a participant transcribing their own call: it is always visible, records only when you press Start and never sends recordings anywhere. Covert recording or surveillance is not a permitted use.
+>
+> 🛡️ The installer is not code-signed yet, so Windows SmartScreen may warn you (*More info → Run anyway*), or install with Scoop. Verify downloads against `SHA256SUMS.txt`.

@@ -10,7 +10,7 @@ namespace VoiceRecorder.App.Services;
 public static class LegalNotice
 {
     /// <summary>Versión del texto del aviso. Súbela cuando cambien DISCLAIMER.md o PRIVACY.md de forma relevante.</summary>
-    public const string Version = "2026-11-16";
+    public const string Version = "2026-11-19";
 
     public const string Title = "Voice Recorder · Aviso legal";
 
@@ -18,6 +18,7 @@ public static class LegalNotice
         "Antes de usar Voice Recorder, lee y acepta estas condiciones:\n\n" +
         "• La aplicación se ofrece «TAL CUAL», sin garantías (licencia MIT). El autor no se hace responsable de ningún daño, pérdida de datos ni consecuencia derivada de su uso.\n\n" +
         "• TÚ ERES EL ÚNICO RESPONSABLE del uso que hagas de ella. Grabar o transcribir una conversación puede requerir el consentimiento de todas las personas que participan, según la ley de tu país (por ejemplo, el RGPD en la UE). Informa a los demás y obtén su consentimiento.\n\n" +
+        "• NO está permitido usarla para grabar a escondidas, espiar ni vigilar a otras personas. La aplicación siempre es visible, solo graba cuando pulsas Iniciar y no envía nada a nadie.\n\n" +
         "• Las transcripciones automáticas contienen errores y no son un registro fiel de la conversación.\n\n" +
         "• Todo se procesa en tu equipo: no hay telemetría ni se envían tus conversaciones a ningún servidor.\n\n" +
         "El texto completo está en DISCLAIMER.md y PRIVACY.md, en la carpeta de la aplicación y en el botón «Aviso legal».\n\n" +
