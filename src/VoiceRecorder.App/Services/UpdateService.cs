@@ -36,7 +36,13 @@ public sealed class UpdateService
         }
 
         var path = source.Trim();
-        if (Uri.TryCreate(path, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https")
+        if (Uri.TryCreate(path, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttp)
+        {
+            // Sin cifrar, un intermediario podría servir una actualización manipulada.
+            throw new ArgumentException("La fuente de actualizaciones debe usar HTTPS.", nameof(source));
+        }
+
+        if (uri is not null && uri.Scheme == Uri.UriSchemeHttps)
         {
             return uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase)
                 ? new GithubSource(path, null, false)

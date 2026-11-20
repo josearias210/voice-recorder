@@ -30,4 +30,12 @@ public class UpdateServiceTests
 
         Assert.IsType<SimpleWebSource>(source);
     }
+
+    [Theory]
+    [InlineData("http://example.com/releases")]
+    [InlineData("http://github.com/josearias210/voice-recorder")]
+    public void Fuente_Sin_Cifrar_Se_Rechaza(string source)
+    {
+        Assert.Throws<ArgumentException>(() => UpdateService.CreateSource(source));
+    }
 }

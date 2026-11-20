@@ -61,7 +61,7 @@ services:
 
   # Busca claves o secretos en todo el historial de git.
   secrets:
-    image: zricethezav/gitleaks:v8.24.3
+    image: zricethezav/gitleaks:v8.30.1
     volumes:
       - .:/repo:ro
     environment:

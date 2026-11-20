@@ -4,10 +4,10 @@
     Subconjunto multiplataforma de las pruebas (sin WPF, WASAPI ni NAudio).
     Reutiliza los mismos archivos de tests/VoiceRecorder.Tests para que se
     puedan ejecutar en Linux/Docker:  .\scripts\docker.ps1 test
-    El conjunto completo (net8.0-windows) se ejecuta en el CI de Windows.
+    El conjunto completo (net10.0-windows) se ejecuta en el CI de Windows.
   -->
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>

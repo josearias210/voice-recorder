@@ -68,7 +68,7 @@ dotnet build VoiceRecorder.slnx -c Release
 dotnet run --project src/VoiceRecorder.App
 ```
 
-Requisitos: [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0) y Windows. El instalador y el portable ya incluyen el runtime .NET 8.
+Requisitos: [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0) y Windows. El instalador y el portable ya incluyen el runtime .NET 10.
 
 ## 📖 Uso
 
@@ -208,7 +208,7 @@ Windows desktop app that transcribes **any call app** (Meet, Teams, Zoom, …) *
 
 - **Install**: grab the setup or portable ZIP from [Releases](../../releases).
 - **Import & transcribe files**: drag audio/video files (mp3, mp4, m4a, mkv, …) onto the window — each one is saved as a session, fully local.
-- **Build**: `dotnet build VoiceRecorder.slnx` (needs .NET 10 SDK, Windows; targets .NET 8).
+- **Build**: `dotnet build VoiceRecorder.slnx` (needs .NET 10 SDK, Windows; targets .NET 10).
 - **Test**: `dotnet test`.
 - **License**: MIT.
 
