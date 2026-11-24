@@ -408,7 +408,7 @@ public sealed partial class NotionExporter
     {
         for (var i = 0; i < blocks.Count; i += MaxBlocksPerRequest)
         {
-            var chunk = new JsonArray([.. blocks.Skip(i).Take(MaxBlocksPerRequest).Select(b => (JsonNode)b.DeepClone())]);
+            var chunk = new JsonArray([.. blocks.Skip(i).Take(MaxBlocksPerRequest).Select(b => b.DeepClone())]);
             using var _ = await SendAsync(HttpMethod.Patch, $"blocks/{parentId}/children", new JsonObject { ["children"] = chunk }, cancellationToken);
         }
     }
