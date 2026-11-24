@@ -641,7 +641,7 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
-        var transcriber = _transcriber;
+        using var transcriber = _transcriber;
         _transcriber = null;
         IsFinalizing = true;
         long? savedId = null;
@@ -683,7 +683,6 @@ public sealed class MainViewModel : ViewModelBase
         }
         finally
         {
-            transcriber.Dispose();
             IsFinalizing = false;
             OnPropertyChanged(nameof(CanStart));
             CommandManager.InvalidateRequerySuggested();
@@ -838,13 +837,13 @@ public sealed class MainViewModel : ViewModelBase
         if (kind == TranscriptionEngineKind.OpenAi)
         {
             await _models.EnsureVadModelAsync(cancellationToken); // El VAD sigue siendo local.
-            var key = _settings?.GetOpenAiKey();
-            if (string.IsNullOrEmpty(key))
+            if (_settings?.GetOpenAiKey() is not { Length: > 0 } key)
             {
                 throw new InvalidOperationException("Falta la clave de OpenAI: configúrala en Configuración › «Transcripción…».");
             }
 
-            return new OpenAiTranscriber(Http, key, _settings?.OpenAiModel, SelectedLanguageCode, usdPerMinute: _settings?.OpenAiUsdPerMinute);
+            // A key implies settings exist.
+            return new OpenAiTranscriber(Http, key, _settings.OpenAiModel, SelectedLanguageCode, usdPerMinute: _settings.OpenAiUsdPerMinute);
         }
 
         StatusText = "Preparando modelos…";

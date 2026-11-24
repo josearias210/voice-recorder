@@ -29,11 +29,9 @@ public partial class CostsWindow : Window
 
         EmptyText.Visibility = months.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         MonthsList.ItemsSource = months.Select(m => new MonthRow(m)).ToList();
-        if (months.Count > 0)
-        {
-            MonthsList.SelectedIndex = 0;
-        }
-        else
+        // Selecting the first month fills the detail; with no months there is nothing to select.
+        MonthsList.SelectedIndex = months.Count > 0 ? 0 : -1;
+        if (months.Count == 0)
         {
             DetailHeader.Text = "Transcripciones";
         }
