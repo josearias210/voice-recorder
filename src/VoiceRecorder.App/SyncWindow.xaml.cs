@@ -39,6 +39,20 @@ public sealed class SyncSessionRow : ViewModelBase
         }.Where(s => s is not null)),
     };
 
+    /// <summary>
+    /// What has been done with the session: transcribed, summarized, analyzed and uploaded to Notion
+    /// (read from its session.json, local or in the cloud).
+    /// </summary>
+    public string ProcessText => Session.Info is not { } info
+        ? "Sin datos de la sesión"
+        : string.Join("   ", new[]
+        {
+            info.SegmentCount > 0 ? $"✓ Transcrita ({info.SegmentCount})" : "○ Sin transcribir",
+            info.HasSummary ? "✓ Resumen" : "○ Sin resumen",
+            info.HasReview ? "✓ Analizada" : null,
+            info.InNotion ? "✓ En Notion" : "○ No subida a Notion",
+        }.Where(s => s is not null));
+
     /// <summary>Detalle por archivo (tooltip).</summary>
     public string FilesText
     {
@@ -100,6 +114,11 @@ public partial class SyncWindow : Window
         new("⬇ Falta bajar", s => s.HasPendingDownload),
         new("≠ Con diferencias", s => s.DifferentCount > 0),
         new("✓ Sincronizadas", s => s.State == SyncState.Synced),
+        new("○ Sin transcribir", s => s.Info is { SegmentCount: 0 }),
+        new("○ Sin resumen", s => s.Info is { HasSummary: false }),
+        new("✓ Analizadas", s => s.Info is { HasReview: true }),
+        new("○ Sin analizar", s => s.Info is { HasReview: false, SegmentCount: > 0 }),
+        new("○ No subidas a Notion", s => s.Info is { InNotion: false }),
     ];
 
     private readonly BackupCoordinator _backup;

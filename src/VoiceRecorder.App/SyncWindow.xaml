@@ -122,7 +122,7 @@
                             Style="{StaticResource SecondaryButton}" Padding="10,3" FontSize="12" Margin="14,0,0,0" />
                     <Button DockPanel.Dock="Left" Content="Marcar pendientes de bajar" Click="SelectPendingDownload_Click"
                             Style="{StaticResource SecondaryButton}" Padding="10,3" FontSize="12" Margin="8,0,0,0" />
-                    <ComboBox DockPanel.Dock="Right" x:Name="FilterBox" MinWidth="190" SelectionChanged="Filter_SelectionChanged"
+                    <ComboBox DockPanel.Dock="Right" x:Name="FilterBox" MinWidth="210" SelectionChanged="Filter_SelectionChanged"
                               VerticalContentAlignment="Center" DisplayMemberPath="Name" />
                     <TextBlock DockPanel.Dock="Right" Text="Mostrar:" VerticalAlignment="Center" Margin="0,0,8,0"
                                Foreground="{DynamicResource MutedBrush}" />
@@ -146,6 +146,9 @@
                                                    Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" />
                                         <TextBlock Text="{Binding DetailText}" FontSize="12" Margin="0,3,0,0"
                                                    Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding ProcessText}" FontSize="12" Margin="0,3,0,0"
+                                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"
+                                                   ToolTip="Transcrita, resumida, analizada y subida a Notion (según el session.json de la sesión)" />
                                     </StackPanel>
                                     <Border Grid.Column="2" Style="{StaticResource StateChip}" Margin="10,0,0,0">
                                         <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="{DynamicResource TextBrush}" />

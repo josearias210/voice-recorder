@@ -33,6 +33,7 @@ public partial class MainWindow : Window
         viewModel.SessionImported += OpenImportedSession;
         viewModel.SessionChanged += UpdateTaskbarState;
         viewModel.ChooseEngine = ChooseEngine;
+        viewModel.Confirm = Confirm;
         RestoreWindowState();
     }
 
@@ -99,6 +100,17 @@ public partial class MainWindow : Window
 
         var dialog = new TranscribeDialog(prompt, _settings, ViewModel.SelectedModel.DisplayName) { Owner = this };
         return dialog.ShowDialog() == true ? dialog.SelectedEngine : null;
+    }
+
+    /// <summary>Yes/No question owned by the active window (a session chat, or this one).</summary>
+    private bool Confirm(string title, string message)
+    {
+        var owner = System.Windows.Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive && w.IsVisible)
+                    ?? (IsVisible ? this : null);
+        var answer = owner is null
+            ? System.Windows.MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Question)
+            : System.Windows.MessageBox.Show(owner, message, title, MessageBoxButton.YesNo, MessageBoxImage.Question);
+        return answer == MessageBoxResult.Yes;
     }
 
     private SettingsWindow? _settingsWindow;
@@ -214,7 +226,7 @@ public partial class MainWindow : Window
 
     private void OpenSessionChat(SessionSummary summary)
     {
-        var chat = new ChatWindow(_store, summary, () => ViewModel.LoadHistory(ViewModel.SearchText))
+        var chat = new ChatWindow(_store, summary, () => ViewModel.LoadHistory(ViewModel.SearchText), ViewModel)
         {
             Owner = this,
         };

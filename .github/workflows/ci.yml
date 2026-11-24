@@ -85,10 +85,11 @@ jobs:
           path: publish/
           retention-days: 14
 
-  # Prueba E2E de humo: el portable recién compilado arranca, carga su
-  # ventana principal y se adjunta una captura de pantalla al PR.
+  # Prueba E2E de humo: el portable recién compilado arranca, recorre sus
+  # pantallas (principal, configuración y sus diálogos, chat de una sesión de
+  # demostración) y se adjunta una captura de cada una al PR.
   e2e-smoke:
-    name: E2E · la app arranca (captura)
+    name: E2E · la app arranca (capturas de pantallas)
     needs: build-test
     runs-on: windows-latest
     timeout-minutes: 15
@@ -99,7 +100,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      # Conserva la credencial: el paso «Publicar la captura en el PR» hace git push.
+      # Conserva la credencial: el paso «Publicar las capturas en el PR» hace git push.
       - name: Checkout # zizmor: ignore[artipacked]
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -109,7 +110,7 @@ jobs:
           name: VoiceRecorder-portable-${{ github.sha }}
           path: publish
 
-      - name: Arrancar la app y capturar la pantalla
+      - name: Arrancar la app y capturar las pantallas
         shell: pwsh
         run: ./scripts/e2e-smoke.ps1 -AppPath publish/VoiceRecorder.exe -OutDir artifacts/e2e -AcceptLegalNotice
 
@@ -118,21 +119,21 @@ jobs:
         shell: pwsh
         run: Get-Content artifacts/e2e/report.md | Add-Content $env:GITHUB_STEP_SUMMARY
 
-      - name: Upload screenshot
+      - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: e2e-screenshot-${{ github.sha }}
+          name: e2e-screenshots-${{ github.sha }}
           path: artifacts/e2e/
           retention-days: 14
           if-no-files-found: warn
 
-      - name: Publicar la captura en el PR
+      - name: Publicar las capturas en el PR
         if: >-
           always() && github.event_name == 'pull_request'
           && github.event.pull_request.head.repo.full_name == github.repository
           && github.actor != 'dependabot[bot]'
-          && hashFiles('artifacts/e2e/app.png') != ''
+          && hashFiles('artifacts/e2e/screens.json') != ''
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -142,7 +143,9 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           $branch = 'e2e-screenshots'
-          $file = "pr-$env:PR_NUMBER/$env:HEAD_SHA.png"
+          $folder = "pr-$env:PR_NUMBER/$env:HEAD_SHA"
+          $screens = @(Get-Content artifacts/e2e/screens.json -Raw | ConvertFrom-Json)
+          if ($screens.Count -eq 0) { throw 'La prueba no generó capturas.' }
 
           # Las capturas se guardan en una rama aparte (sin historial del código)
           # para poder enlazarlas como imagen en el comentario.
@@ -160,18 +163,22 @@ jobs:
             git checkout --orphan $branch
             git rm -rf --quiet .
           }
-          New-Item -ItemType Directory -Force -Path (Split-Path $file) | Out-Null
-          Copy-Item ../artifacts/e2e/app.png $file
-          git add $file
-          git commit --quiet -m "E2E: captura de PR #$env:PR_NUMBER ($env:HEAD_SHA)"
+          New-Item -ItemType Directory -Force -Path $folder | Out-Null
+          Copy-Item ../artifacts/e2e/screens/*.png $folder
+          git add $folder
+          git commit --quiet -m "E2E: capturas de PR #$env:PR_NUMBER ($env:HEAD_SHA)"
           git push --quiet origin "HEAD:$branch"
-          if ($LASTEXITCODE -ne 0) { throw 'No se pudo publicar la captura.' }
+          if ($LASTEXITCODE -ne 0) { throw 'No se pudieron publicar las capturas.' }
           Pop-Location
 
+          # One comment with every screen: the main window first, then the rest.
           $report = Get-Content artifacts/e2e/report.md -Raw
           $marker = '<!-- e2e-smoke -->'
-          $image = "https://raw.githubusercontent.com/$env:REPO/$branch/$file"
-          $body = "$marker`n$report`n![Captura de Voice Recorder]($image)`n`nCommit $env:HEAD_SHA · [ejecución]($env:RUN_URL)"
+          $base = "https://raw.githubusercontent.com/$env:REPO/$branch/$folder"
+          $images = foreach ($screen in $screens) {
+            "#### $($screen.title)`n`n![$($screen.title)]($base/$($screen.file))`n"
+          }
+          $body = "$marker`n$report`n" + ($images -join "`n") + "`nCommit $env:HEAD_SHA · [ejecución]($env:RUN_URL)"
 
           # Un único comentario por PR, actualizado en cada ejecución.
           $existing = gh api "repos/$env:REPO/issues/$env:PR_NUMBER/comments" --paginate --jq ".[] | select(.body | startswith(`"$marker`")) | .id" | Select-Object -First 1

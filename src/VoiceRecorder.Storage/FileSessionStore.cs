@@ -246,6 +246,29 @@ public sealed class FileSessionStore : ISessionFileStore
         return true;
     }
 
+    public bool SetCallSummary(long id, CallSummary? summary) => Update(id, data => data with { CallSummary = summary });
+
+    public bool SetNotionExport(long id, NotionExport? export) => Update(id, data => data with { Notion = export });
+
+    public bool SetReview(long id, CallSummary? review) => Update(id, data => data with { Review = review });
+
+    /// <summary>Rewrites the session's <c>session.json</c> with <paramref name="change"/>; false if it does not exist.</summary>
+    private bool Update(long id, Func<SessionFile, SessionFile> change)
+    {
+        lock (_gate)
+        {
+            if (!_folders.TryGetValue(id, out var folder) || TryRead(folder) is not { } data)
+            {
+                return false;
+            }
+
+            Write(folder, change(data));
+        }
+
+        Changed?.Invoke();
+        return true;
+    }
+
     /// <summary>Ruta relativa (con '/') de la carpeta de una sesión dentro de la raíz.</summary>
     public static string BuildRelativeFolder(long id, DateTime startedAt) =>
         string.Create(
@@ -312,7 +335,16 @@ public sealed class FileSessionStore : ISessionFileStore
         try
         {
             var data = JsonSerializer.Deserialize<SessionFile>(json, JsonOptions);
-            return data is null ? null : new SessionInfo(data.Id, data.Title ?? string.Empty, data.StartedAt, data.Segments?.Count ?? 0);
+            return data is null
+                ? null
+                : new SessionInfo(
+                    data.Id,
+                    data.Title ?? string.Empty,
+                    data.StartedAt,
+                    data.Segments?.Count ?? 0,
+                    data.CallSummary is not null,
+                    data.Review is not null,
+                    data.Notion is not null);
         }
         catch (JsonException)
         {
@@ -408,7 +440,10 @@ public sealed class FileSessionStore : ISessionFileStore
         data.Tags ?? string.Empty,
         data.Notes ?? string.Empty,
         data.Segments?.Count ?? 0,
-        data.LastTranscription);
+        data.LastTranscription,
+        data.CallSummary,
+        data.Notion,
+        data.Review);
 
     private static SessionFile? TryRead(string folder)
     {
@@ -439,7 +474,17 @@ public sealed class FileSessionStore : ISessionFileStore
     }
 
     /// <summary>Datos básicos de una sesión leídos de su <c>session.json</c>.</summary>
-    public sealed record SessionInfo(long Id, string Title, DateTime StartedAt, int SegmentCount);
+    /// <param name="HasSummary">It has an AI summary.</param>
+    /// <param name="HasReview">It has a communication review.</param>
+    /// <param name="InNotion">It was uploaded to Notion.</param>
+    public sealed record SessionInfo(
+        long Id,
+        string Title,
+        DateTime StartedAt,
+        int SegmentCount,
+        bool HasSummary = false,
+        bool HasReview = false,
+        bool InNotion = false);
 
     /// <summary>Formato de <c>session.json</c>.</summary>
     internal sealed record SessionFile(
@@ -451,7 +496,10 @@ public sealed class FileSessionStore : ISessionFileStore
         string? Tags,
         string? Notes,
         List<SegmentFile>? Segments,
-        TranscriptionRun? LastTranscription = null);
+        TranscriptionRun? LastTranscription = null,
+        CallSummary? CallSummary = null,
+        NotionExport? Notion = null,
+        CallSummary? Review = null);
 
     /// <summary>Segmento de transcripción dentro de <c>session.json</c>.</summary>
     internal sealed record SegmentFile(Speaker Speaker, double Start, double End, string? Text);

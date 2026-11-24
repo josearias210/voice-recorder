@@ -28,6 +28,40 @@ public sealed class FileSessionStoreTests : IDisposable
     }
 
     [Fact]
+    public void El_Resumen_Y_La_Pagina_De_Notion_Se_Guardan_Y_Sobreviven_A_Retranscribir()
+    {
+        var store = new FileSessionStore(_root);
+        var id = store.SaveSession("Llamada", new DateTime(2026, 11, 24, 10, 0, 0), TimeSpan.FromMinutes(5), "qa", "notas", []);
+        var summary = new CallSummary("## Resumen\n- Punto", new DateTime(2026, 11, 24, 10, 6, 0), "gpt-5-mini", 0.0021);
+        var export = new NotionExport("page-1", "https://www.notion.so/page-1", new DateTime(2026, 11, 24, 10, 7, 0));
+
+        Assert.True(store.SetCallSummary(id, summary));
+        Assert.True(store.SetNotionExport(id, export));
+        store.ReplaceSegments(id, [new TranscriptSegment(Speaker.Me, TimeSpan.Zero, TimeSpan.FromSeconds(1), "hola")]);
+        store.UpdateSession(id, "Llamada editada", "qa", "notas");
+
+        var reopened = new FileSessionStore(_root);
+        var (session, _) = reopened.GetSession(id)!.Value;
+        Assert.Equal(summary, session.CallSummary);
+        Assert.Equal(export, session.Notion);
+        Assert.Equal(summary, Assert.Single(reopened.ListSessions()).CallSummary);
+
+        var review = new CallSummary("## Fallas\n- Interrumpí", new DateTime(2026, 11, 24, 10, 8, 0), "gpt-5-mini", 0.003);
+        Assert.True(store.SetReview(id, review));
+        Assert.Equal(review, new FileSessionStore(_root).GetSession(id)!.Value.Session.Review);
+
+        var info = FileSessionStore.TryParseSessionInfo(File.ReadAllText(Path.Join(store.GetSessionFolder(id)!, FileSessionStore.SessionFileName)))!;
+        Assert.Equal(1, info.SegmentCount);
+        Assert.True(info.HasSummary);
+        Assert.True(info.HasReview);
+        Assert.True(info.InNotion);
+
+        Assert.True(store.SetCallSummary(id, null));
+        Assert.Null(new FileSessionStore(_root).GetSession(id)!.Value.Session.CallSummary);
+        Assert.False(store.SetNotionExport(999, export));
+    }
+
+    [Fact]
     public void ReplaceSegments_Sustituye_La_Transcripcion_Y_Conserva_Los_Metadatos()
     {
         var store = new FileSessionStore(_root);

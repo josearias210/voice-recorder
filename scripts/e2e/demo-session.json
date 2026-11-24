@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "id": 1,
+  "title": "Demo · llamada con cliente",
+  "startedAt": "2026-11-24T10:00:00",
+  "activeDurationSeconds": 754,
+  "tags": "demo, cliente",
+  "notes": "Sesión de demostración generada por la prueba E2E (datos ficticios).",
+  "segments": [
+    { "speaker": "Me", "start": 2, "end": 6, "text": "Hola, Laura, gracias por sacar un rato. ¿Cómo va el lanzamiento?" },
+    { "speaker": "Them", "start": 7, "end": 15, "text": "Bien, aunque vamos justos con el presupuesto y nos preocupa la fecha de entrega." },
+    { "speaker": "Me", "start": 16, "end": 24, "text": "Entiendo. ¿Qué parte de la fecha os preocupa más, la integración o las pruebas?" },
+    { "speaker": "Them", "start": 25, "end": 33, "text": "Las pruebas. Si se retrasan, perdemos la campaña de diciembre." },
+    { "speaker": "Me", "start": 34, "end": 44, "text": "Podemos adelantar las pruebas a la semana que viene si nos enviáis los datos el lunes." },
+    { "speaker": "Them", "start": 45, "end": 50, "text": "De acuerdo, el lunes los tenéis." }
+  ],
+  "lastTranscription": {
+    "startedAt": "2026-11-24T10:13:00",
+    "engine": "Whisper",
+    "model": "Base (Q5)",
+    "elapsed": "00:00:41",
+    "audioSeconds": 754,
+    "costUsd": 0,
+    "sessionId": 1,
+    "sessionTitle": "Demo · llamada con cliente",
+    "completed": true
+  },
+  "callSummary": {
+    "text": "## Resumen\nSe revisó el lanzamiento: el riesgo principal es el plazo de las pruebas. Se acordó adelantarlas.\n\n## Puntos clave\n- El presupuesto va justo.\n- Un retraso en las pruebas haría perder la campaña de diciembre.\n\n## Decisiones\n- Adelantar las pruebas a la semana que viene.\n\n## Tareas\n- [ ] Enviar los datos de prueba el lunes (responsable: Ellos).\n- [ ] Preparar el entorno de pruebas (responsable: Yo).",
+    "createdAt": "2026-11-24T10:14:00",
+    "model": "gpt-5-mini",
+    "costUsd": 0.0031
+  },
+  "review": {
+    "text": "## Valoración general\n8/10. Conversación cordial y orientada a soluciones.\n\n## Criterios evaluados\n- **Escucha activa** — 4/5: pregunta qué preocupa más [00:00:16].\n- **Empatía y perspectiva** — 4/5: «Entiendo» antes de proponer [00:00:16].\n\n## Aciertos\n- Abre con un saludo cercano y usa su nombre [00:00:02].\n\n## Fallas\n- Propone la solución sin confirmar si encaja con su equipo [00:00:34].\n\n## Mejoras\n- En lugar de «Podemos adelantar…», prueba: «¿Os vendría bien adelantar las pruebas si…?».\n\n## Para la próxima llamada\n- Validar la propuesta con una pregunta antes de cerrarla.",
+    "createdAt": "2026-11-24T10:15:00",
+    "model": "gpt-5-mini",
+    "costUsd": 0.0042
+  }
+}

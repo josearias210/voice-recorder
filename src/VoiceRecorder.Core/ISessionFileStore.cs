@@ -34,4 +34,13 @@ public interface ISessionFileStore : ISessionStore
     /// Devuelve false si la sesión no existe.
     /// </summary>
     bool ReplaceSegments(long id, IReadOnlyList<TranscriptSegment> segments, TranscriptionRun? run = null);
+
+    /// <summary>Saves (or, with null, removes) the session's AI summary. Returns false if the session does not exist.</summary>
+    bool SetCallSummary(long id, CallSummary? summary);
+
+    /// <summary>Saves (or, with null, removes) the session's communication review. Returns false if the session does not exist.</summary>
+    bool SetReview(long id, CallSummary? review);
+
+    /// <summary>Records (or, with null, forgets) the Notion page of the session. Returns false if the session does not exist.</summary>
+    bool SetNotionExport(long id, NotionExport? export);
 }

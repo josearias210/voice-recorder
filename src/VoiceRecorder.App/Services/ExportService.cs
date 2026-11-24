@@ -48,6 +48,19 @@ public static class ExportService
             sb.AppendLine($"Notas: {session.Notes}");
         }
 
+        if (session.CallSummary is { } summary)
+        {
+            sb.AppendLine(new string('─', 60));
+            sb.AppendLine(summary.Text.Trim());
+        }
+
+        if (session.Review is { } review)
+        {
+            sb.AppendLine(new string('─', 60));
+            sb.AppendLine("ANÁLISIS DE COMUNICACIÓN");
+            sb.AppendLine(review.Text.Trim());
+        }
+
         sb.AppendLine(new string('─', 60));
         foreach (var segment in segments)
         {
@@ -75,6 +88,26 @@ public static class ExportService
         }
 
         sb.AppendLine();
+        if (session.CallSummary is { } summary)
+        {
+            sb.AppendLine(summary.Text.Trim());
+            sb.AppendLine();
+        }
+
+        if (session.Review is { } review)
+        {
+            sb.AppendLine("# Análisis de comunicación");
+            sb.AppendLine();
+            sb.AppendLine(review.Text.Trim());
+            sb.AppendLine();
+        }
+
+        if (session.CallSummary is not null || session.Review is not null)
+        {
+            sb.AppendLine("## Transcripción");
+            sb.AppendLine();
+        }
+
         foreach (var segment in segments)
         {
             sb.AppendLine($"**[{segment.Start:hh\\:mm\\:ss}] {Label(segment.Speaker)}** — {segment.Text}");

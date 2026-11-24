@@ -61,6 +61,59 @@ public class SettingsServiceTests : IDisposable
         Assert.Null(service.MicrophoneId);
         Assert.Equal(TranscriptionEngineKind.Whisper, service.DefaultEngine);
         Assert.False(service.HasOpenAiKey);
+        Assert.False(service.AutoSummarize);
+        Assert.False(service.NotionEnabled);
+        Assert.False(service.IsNotionReady);
+        Assert.True(service.NotionAskAfterTranscription);
+        Assert.False(service.ReviewEnabled);
+        Assert.Equal(
+            VoiceRecorder.Storage.Notion.NotionContent.Summary | VoiceRecorder.Storage.Notion.NotionContent.Transcript,
+            service.NotionUploadContent);
+    }
+
+    [Fact]
+    public void El_Analisis_Solo_Se_Sube_Con_El_Experimento_Activo()
+    {
+        var service = new SettingsService(_dataDir) { NotionIncludeSummary = false, NotionIncludeReview = true };
+
+        Assert.Equal(VoiceRecorder.Storage.Notion.NotionContent.Transcript, service.NotionUploadContent);
+
+        service.ReviewEnabled = true;
+        service.Save();
+        var restarted = new SettingsService(_dataDir);
+        restarted.Load();
+        Assert.True(restarted.ReviewEnabled);
+        Assert.Equal(
+            VoiceRecorder.Storage.Notion.NotionContent.Transcript | VoiceRecorder.Storage.Notion.NotionContent.Review,
+            restarted.NotionUploadContent);
+    }
+
+    [Fact]
+    public void Save_Y_Load_Conserva_Resumen_Y_Notion_Con_El_Token_Cifrado()
+    {
+        var original = new SettingsService(_dataDir)
+        {
+            AutoSummarize = true,
+            SummaryModel = "otro-modelo",
+            SummaryUsdPerMillionInput = 1.5,
+            SummaryUsdPerMillionOutput = 6,
+            NotionEnabled = true,
+            NotionDatabaseId = "01234567-89ab-cdef-0123-456789abcdef",
+            NotionAskAfterTranscription = false,
+        };
+        original.SetNotionToken(" ntn_secreto ");
+        original.Save();
+
+        Assert.DoesNotContain("ntn_secreto", File.ReadAllText(Path.Join(_dataDir, "settings.json")));
+        var restarted = new SettingsService(_dataDir);
+        restarted.Load();
+        Assert.True(restarted.AutoSummarize);
+        Assert.Equal("otro-modelo", restarted.SummaryModel);
+        Assert.Equal(1.5, restarted.SummaryUsdPerMillionInput);
+        Assert.Equal(6, restarted.SummaryUsdPerMillionOutput);
+        Assert.False(restarted.NotionAskAfterTranscription);
+        Assert.Equal("ntn_secreto", restarted.GetNotionToken());
+        Assert.True(restarted.IsNotionReady);
     }
 
     [Fact]
