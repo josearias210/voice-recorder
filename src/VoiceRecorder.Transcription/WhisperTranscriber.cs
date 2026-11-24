@@ -41,6 +41,7 @@ public sealed class WhisperTranscriber : ITranscriptionEngine, IDisposable
 
     private WhisperProcessor? _processor;
     private string? _processorLanguage;
+    private int _processorThreads;
 
     public WhisperTranscriber(string modelPath, string language = "es")
     {
@@ -60,9 +61,17 @@ public sealed class WhisperTranscriber : ITranscriptionEngine, IDisposable
     /// </summary>
     public static int ComputeThreads(int processorCount) => Math.Clamp(processorCount - 1, 3, 16);
 
+    /// <summary>
+    /// Hilos de inferencia en directo: deja dos núcleos libres (mín. 2, máx. 8)
+    /// para que la captura WASAPI, el VAD y la UI no pierdan audio mientras
+    /// Whisper trabaja. Más de 8 hilos apenas acelera whisper.cpp.
+    /// </summary>
+    public static int ComputeLiveThreads(int processorCount) => Math.Clamp(processorCount - 2, 2, 8);
+
     /// <summary>Idioma: "es", "en", ... o "auto" para detección.</summary>
     public string Language { get; set; } = "es";
 
+    /// <summary>Hilos de inferencia; un cambio se aplica en la siguiente transcripción.</summary>
     public int Threads { get; set; }
 
     public async Task<IReadOnlyList<TranscriptSegment>> TranscribeAsync(Utterance utterance, CancellationToken cancellationToken)
@@ -185,7 +194,7 @@ public sealed class WhisperTranscriber : ITranscriptionEngine, IDisposable
 
     private WhisperProcessor GetProcessor()
     {
-        if (_processor is not null && _processorLanguage == Language)
+        if (_processor is not null && _processorLanguage == Language && _processorThreads == Threads)
         {
             return _processor;
         }
@@ -217,6 +226,7 @@ public sealed class WhisperTranscriber : ITranscriptionEngine, IDisposable
 
         _processor = builder.Build();
         _processorLanguage = Language;
+        _processorThreads = Threads;
         return _processor;
     }
 

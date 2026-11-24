@@ -432,8 +432,11 @@ public sealed class MainViewModel : ViewModelBase
         _settings.Save();
     }
 
-    /// <summary>Garantiza los modelos y el motor Whisper según la selección actual (con caché).</summary>
-    private async Task<WhisperTranscriber> EnsureEngineAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Garantiza los modelos y el motor Whisper según la selección actual (con caché).
+    /// En directo (<paramref name="live"/>) usa menos hilos para no quitar CPU a la captura.
+    /// </summary>
+    private async Task<WhisperTranscriber> EnsureEngineAsync(bool live = false, CancellationToken cancellationToken = default)
     {
         var modelPath = await _models.EnsureWhisperModelAsync(
             SelectedModel,
@@ -451,6 +454,9 @@ public sealed class MainViewModel : ViewModelBase
             _engineKey = engineKey;
         }
 
+        _engine.Threads = live
+            ? WhisperTranscriber.ComputeLiveThreads(Environment.ProcessorCount)
+            : WhisperTranscriber.ComputeThreads(Environment.ProcessorCount);
         return _engine;
     }
 
@@ -505,7 +511,7 @@ public sealed class MainViewModel : ViewModelBase
             {
                 StatusText = "Preparando modelos…";
                 DownloadPercent = 0;
-                engine = await EnsureEngineAsync();
+                engine = await EnsureEngineAsync(live: true);
                 DownloadPercent = 1;
             }
 
@@ -540,6 +546,7 @@ public sealed class MainViewModel : ViewModelBase
 
             _liveSegments.Clear();
             Segments.Clear();
+            _backlogWarningShown = false;
             _transcriber.Start();
 
             _timer.Start();
@@ -628,7 +635,22 @@ public sealed class MainViewModel : ViewModelBase
         try
         {
             StatusText = "Deteniendo y guardando…";
-            await transcriber.StopAsync();
+            var stopTask = transcriber.StopAsync();
+            while (!stopTask.IsCompleted)
+            {
+                // En directo, las frases que Whisper aún no ha procesado se
+                // terminan de transcribir: se muestra cuántas quedan.
+                var pending = transcriber.PendingUtterances;
+                if (pending > 0)
+                {
+                    StatusText = $"Terminando la transcripción en vivo… quedan {pending} frases.";
+                }
+
+                await Task.WhenAny(stopTask, Task.Delay(500));
+            }
+
+            await stopTask;
+            UpdateElapsed(transcriber);
             _timer.Stop();
 
             // Cierra los WAV antes de nada: todos los bloques ya se entregaron.
@@ -845,7 +867,7 @@ public sealed class MainViewModel : ViewModelBase
         {
             StatusText = "Preparando modelos…";
             DownloadPercent = 0;
-            var engine = await EnsureEngineAsync(cancellation.Token);
+            var engine = await EnsureEngineAsync(cancellationToken: cancellation.Token);
 
             var vadError = string.Empty;
             var transcriber = new FileTranscriber(engine, CreateVadFactory(e => vadError = e));
@@ -1105,11 +1127,36 @@ public sealed class MainViewModel : ViewModelBase
         }, null);
     }
 
-    private void UpdateElapsed()
+    /// <summary>Frases en cola a partir de las cuales se avisa de que el directo va con retraso.</summary>
+    private const int LiveBacklogWarning = 3;
+
+    private bool _backlogWarningShown;
+
+    private void UpdateElapsed() => UpdateElapsed(_transcriber);
+
+    private void UpdateElapsed(ConversationTranscriber? transcriber)
     {
-        if (_transcriber is not null)
+        if (transcriber is null)
         {
-            ElapsedText = _transcriber.ActiveElapsed.ToString(@"hh\:mm\:ss");
+            return;
+        }
+
+        ElapsedText = transcriber.ActiveElapsed.ToString(@"hh\:mm\:ss");
+        if (RecordAudioFirst || transcriber.State != SessionState.Recording)
+        {
+            return;
+        }
+
+        var pending = transcriber.PendingUtterances;
+        if (pending >= LiveBacklogWarning)
+        {
+            StatusText = $"Los subtítulos van con retraso ({pending} frases en cola): prueba un modelo más rápido o el modo «Grabar audio y transcribir al detener».";
+            _backlogWarningShown = true;
+        }
+        else if (_backlogWarningShown && pending == 0)
+        {
+            StatusText = "Transcripción en vivo. El audio no se guarda.";
+            _backlogWarningShown = false;
         }
     }
 }

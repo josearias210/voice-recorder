@@ -165,4 +165,62 @@ public class ConversationTranscriberTests
         Assert.Equal(3, tapped);
         Assert.Equal(0, vadsCreated);
     }
+
+    /// <summary>Motor que no responde hasta que la prueba lo libera (Whisper por detrás del directo).</summary>
+    private sealed class GatedEngine : ITranscriptionEngine
+    {
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task<IReadOnlyList<TranscriptSegment>> TranscribeAsync(Utterance utterance, CancellationToken cancellationToken)
+        {
+            await Release.Task.WaitAsync(cancellationToken);
+            return [new TranscriptSegment(utterance.Speaker, utterance.Start, utterance.End, "hola")];
+        }
+    }
+
+    [Fact]
+    public async Task StopAsync_Termina_De_Transcribir_Las_Frases_En_Cola()
+    {
+        var engine = new GatedEngine();
+        var mic = new FakeCapture(AudioSource.Microphone);
+        var loop = new FakeCapture(AudioSource.Loopback);
+        using var transcriber = new ConversationTranscriber(engine, () => new FakeVad([0.9f]), mic, loop);
+        var segments = new List<TranscriptSegment>();
+        transcriber.SegmentReady += segments.Add;
+
+        transcriber.Start();
+        mic.Emit(512 * 10); // ~320ms de voz: se emite como frase al detener.
+
+        var stopTask = transcriber.StopAsync();
+        await Task.Delay(200);
+        Assert.False(stopTask.IsCompleted); // Espera a Whisper en vez de descartar la cola.
+        Assert.Equal(1, transcriber.PendingUtterances);
+
+        engine.Release.SetResult();
+        await stopTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(SessionState.Stopped, transcriber.State);
+        Assert.Equal(0, transcriber.PendingUtterances);
+        var segment = Assert.Single(segments);
+        Assert.Equal(Speaker.Me, segment.Speaker);
+    }
+
+    [Fact]
+    public async Task StopAsync_No_Cuenta_El_Drenaje_Como_Tiempo_De_Sesion()
+    {
+        var engine = new GatedEngine();
+        var mic = new FakeCapture(AudioSource.Microphone);
+        var loop = new FakeCapture(AudioSource.Loopback);
+        using var transcriber = new ConversationTranscriber(engine, () => new FakeVad([0.9f]), mic, loop);
+
+        transcriber.Start();
+        mic.Emit(512 * 10);
+        var stopTask = transcriber.StopAsync();
+        var frozen = transcriber.ActiveElapsed;
+        await Task.Delay(300);
+        engine.Release.SetResult();
+        await stopTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.True(transcriber.ActiveElapsed - frozen < TimeSpan.FromMilliseconds(100));
+    }
 }

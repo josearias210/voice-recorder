@@ -153,6 +153,9 @@ public sealed class ConversationTranscriber : IDisposable
             return;
         }
 
+        // Congela el tiempo activo: terminar de transcribir la cola no debe
+        // contar como duración de la sesión.
+        _pauseStart ??= _clock.Elapsed;
         StopCaptures();
         // Espera el drenaje final de ambas capturas: sus últimos bloques se
         // entregan justo antes de sus eventos Stopped (máx. 2s por seguridad).
@@ -171,11 +174,14 @@ public sealed class ConversationTranscriber : IDisposable
             _queue.Writer.TryComplete();
             try
             {
-                await _consumer.WaitAsync(TimeSpan.FromSeconds(30));
+                // Sin límite de tiempo: si Whisper va por detrás del directo,
+                // las frases en cola se terminan de transcribir en lugar de
+                // perderse (PendingUtterances permite mostrar el avance).
+                await _consumer;
             }
-            catch
+            catch (OperationCanceledException)
             {
-                // Tiempo agotado o cancelación: se abandona el drenaje pendiente.
+                // Cancelado por Dispose: se abandona el drenaje pendiente.
             }
         }
 
