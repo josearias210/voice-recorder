@@ -55,7 +55,7 @@ public class RelayCommandTests
             {
                 await Task.Delay(10, timeout.Token);
             }
-        });
+        }, TestContext.Current.CancellationToken);
 
         command.Execute(null);
         Assert.Equal(2, calls);

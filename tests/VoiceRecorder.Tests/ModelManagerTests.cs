@@ -37,7 +37,7 @@ public class ModelManagerTests : IDisposable
 
         await ModelManager.DownloadToFileAsync(source, destination, null, CancellationToken.None, hash);
 
-        Assert.Equal(data, await File.ReadAllBytesAsync(destination));
+        Assert.Equal(data, await File.ReadAllBytesAsync(destination, TestContext.Current.CancellationToken));
     }
 
     [Fact]

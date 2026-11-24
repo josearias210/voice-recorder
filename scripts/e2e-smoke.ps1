@@ -10,7 +10,7 @@
          settings.json nuevo; si no, la app se quedaría esperando ese diálogo.
       2. Lanza el ejecutable y espera a su ventana principal.
       3. Maximiza la ventana y comprueba con UI Automation que se ven los
-         controles principales («▶ Iniciar», «Historial de sesiones»).
+         controles principales («Iniciar», «Historial de sesiones»).
       4. Guarda una captura de toda la pantalla y comprueba que la app sigue viva.
     Sale con código distinto de 0 si algo falla; siempre que pueda deja la
     captura, también la del fallo.
@@ -112,7 +112,7 @@ try {
     [E2E.Native]::SetForegroundWindow($process.MainWindowHandle) | Out-Null
     Start-Sleep -Seconds 3
 
-    foreach ($name in '▶ Iniciar', 'Historial de sesiones', 'Transcripción…') {
+    foreach ($name in 'Iniciar', 'Historial de sesiones', 'Transcripción…') {
         if (-not (Find-Element $window $name)) {
             throw "No se encontró el elemento «$name» en la ventana principal."
         }

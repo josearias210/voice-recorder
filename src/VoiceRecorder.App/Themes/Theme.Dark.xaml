@@ -1,20 +1,35 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Tema oscuro (slate) -->
-    <SolidColorBrush x:Key="AccentBrush" Color="#3B82F6" />
-    <SolidColorBrush x:Key="AccentDarkBrush" Color="#2563EB" />
+    <!-- Tema oscuro (slate). Contrastes pensados para WCAG AA sobre PanelBackground. -->
+    <!-- Fondos de botón: texto blanco encima. -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#2563EB" />
+    <SolidColorBrush x:Key="AccentDarkBrush" Color="#1D4ED8" />
+    <SolidColorBrush x:Key="DangerBrush" Color="#DC2626" />
+    <SolidColorBrush x:Key="DangerDarkBrush" Color="#B91C1C" />
+
+    <!-- Variantes para texto sobre fondos oscuros. -->
+    <SolidColorBrush x:Key="AccentTextBrush" Color="#93C5FD" />
+    <SolidColorBrush x:Key="DangerTextBrush" Color="#F87171" />
+    <SolidColorBrush x:Key="WarningBrush" Color="#FBBF24" />
+    <SolidColorBrush x:Key="SuccessBrush" Color="#22C55E" />
+
     <SolidColorBrush x:Key="WindowBackground" Color="#0F172A" />
     <SolidColorBrush x:Key="PanelBackground" Color="#1E293B" />
     <SolidColorBrush x:Key="BorderBrush" Color="#334155" />
     <SolidColorBrush x:Key="TextBrush" Color="#E2E8F0" />
-    <SolidColorBrush x:Key="MutedBrush" Color="#94A3B8" />
+    <SolidColorBrush x:Key="MutedBrush" Color="#A5B4C8" />
     <SolidColorBrush x:Key="BubbleMe" Color="#1E3A8A" />
     <SolidColorBrush x:Key="BubbleThem" Color="#334155" />
-    <SolidColorBrush x:Key="DangerBrush" Color="#EF4444" />
+    <SolidColorBrush x:Key="AvatarThemBrush" Color="#64748B" />
+    <SolidColorBrush x:Key="AvatarOtherBrush" Color="#334155" />
     <SolidColorBrush x:Key="HoverBrush" Color="#334155" />
-    <SolidColorBrush x:Key="DisabledBrush" Color="#475569" />
+    <SolidColorBrush x:Key="SelectionBrush" Color="#1E3A8A" />
+    <SolidColorBrush x:Key="DisabledBrush" Color="#334155" />
     <SolidColorBrush x:Key="DisabledTextBrush" Color="#94A3B8" />
-    <SolidColorBrush x:Key="InputBackground" Color="#111A2E" />
+    <SolidColorBrush x:Key="InputBackground" Color="#0F172A" />
+    <SolidColorBrush x:Key="ScrollThumbBrush" Color="#475569" />
+    <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="#64748B" />
+    <SolidColorBrush x:Key="TextSelectionBrush" Color="#3B82F6" />
 
 </ResourceDictionary>

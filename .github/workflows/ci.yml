@@ -74,9 +74,9 @@ jobs:
 
       - name: Test
         run: >-
-          dotnet test tests/VoiceRecorder.Tests -c Release --no-build --nologo
-          --logger "console;verbosity=normal"
-          --logger "trx" --results-directory "artifacts/test-results"
+          dotnet test --project tests/VoiceRecorder.Tests -c Release --no-build --output Detailed
+          --report-xunit-trx --report-xunit-trx-filename windows.trx
+          --results-directory "artifacts/test-results"
 
       - name: Upload test results
         uses: actions/upload-artifact@v7
@@ -132,7 +132,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Download portable build
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: VoiceRecorder-portable-${{ github.sha }}
           path: publish
