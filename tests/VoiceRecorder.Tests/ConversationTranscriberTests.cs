@@ -192,12 +192,12 @@ public class ConversationTranscriberTests
         mic.Emit(512 * 10); // ~320ms de voz: se emite como frase al detener.
 
         var stopTask = transcriber.StopAsync();
-        await Task.Delay(200);
+        await Task.Delay(200, TestContext.Current.CancellationToken);
         Assert.False(stopTask.IsCompleted); // Espera a Whisper en vez de descartar la cola.
         Assert.Equal(1, transcriber.PendingUtterances);
 
         engine.Release.SetResult();
-        await stopTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await stopTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         Assert.Equal(SessionState.Stopped, transcriber.State);
         Assert.Equal(0, transcriber.PendingUtterances);
@@ -217,9 +217,9 @@ public class ConversationTranscriberTests
         mic.Emit(512 * 10);
         var stopTask = transcriber.StopAsync();
         var frozen = transcriber.ActiveElapsed;
-        await Task.Delay(300);
+        await Task.Delay(300, TestContext.Current.CancellationToken);
         engine.Release.SetResult();
-        await stopTask.WaitAsync(TimeSpan.FromSeconds(5));
+        await stopTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         Assert.True(transcriber.ActiveElapsed - frozen < TimeSpan.FromMilliseconds(100));
     }

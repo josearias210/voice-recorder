@@ -23,9 +23,9 @@ services:
   test:
     <<: *dotnet
     command: >-
-      dotnet test tests/VoiceRecorder.Tests.Portable -c Release
-      --logger "console;verbosity=normal"
-      --logger "trx;LogFileName=portable.trx" --results-directory /src/artifacts/test-results
+      dotnet test --project tests/VoiceRecorder.Tests.Portable -c Release --output Detailed
+      --report-xunit-trx --report-xunit-trx-filename portable.trx
+      --results-directory /src/artifacts/test-results
 
   # Genera la app portable para Windows (self-contained, no requiere .NET instalado)
   # en artifacts/docker-publish. Ejecuta VoiceRecorder.exe desde esa carpeta.

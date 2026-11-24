@@ -4,7 +4,9 @@
         Title="Sincronizar con el backup externo"
         Height="680" Width="900" MinHeight="460" MinWidth="720"
         WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource WindowBackground}">
+        Background="{DynamicResource WindowBackground}"
+        Foreground="{DynamicResource TextBrush}"
+        FontFamily="{StaticResource AppFont}">
     <Window.Resources>
         <!-- Color de cada estado: verde sincronizado, ámbar falta subir, azul falta bajar, rojo distinto -->
         <Style x:Key="StateChip" TargetType="Border" BasedOn="{StaticResource Chip}">
@@ -28,12 +30,13 @@
             <Setter Property="Background" Value="{DynamicResource PanelBackground}" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1,1,1,3" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="14,10" />
             <Setter Property="Margin" Value="0,0,8,0" />
         </Style>
         <Style x:Key="CardValue" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="FontFamily" Value="{StaticResource DisplayFont}" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         </Style>
@@ -56,7 +59,7 @@
 
         <!-- Cabecera -->
         <DockPanel Grid.Row="0" Margin="0,0,0,10">
-            <Button DockPanel.Dock="Right" x:Name="RefreshButton" Content="↻ Comparar de nuevo" Click="Refresh_Click"
+            <Button DockPanel.Dock="Right" x:Name="RefreshButton" Content="Comparar de nuevo" Tag="&#xE72C;" Click="Refresh_Click"
                     Style="{StaticResource SecondaryButton}" VerticalAlignment="Center" />
             <StackPanel>
                 <TextBlock Text="Sincronizar con el backup externo" FontSize="16" FontWeight="SemiBold"
@@ -68,11 +71,11 @@
 
         <!-- Porcentaje sincronizado -->
         <Border Grid.Row="1" Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderBrush}"
-                BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,0,0,8">
+                BorderThickness="1" CornerRadius="12" Padding="14,10" Margin="0,0,0,8">
             <StackPanel>
                 <TextBlock x:Name="PercentText" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}"
                            Text="Comparando…" />
-                <ProgressBar x:Name="PercentBar" Height="8" Minimum="0" Maximum="100" Margin="0,8,0,0" Foreground="#22C55E" />
+                <ProgressBar x:Name="PercentBar" Height="8" Minimum="0" Maximum="100" Margin="0,8,0,0" Foreground="{DynamicResource SuccessBrush}" />
             </StackPanel>
         </Border>
 
@@ -106,7 +109,7 @@
 
         <!-- Lista de sesiones -->
         <Border Grid.Row="3" Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderBrush}"
-                BorderThickness="1" CornerRadius="10" Padding="8">
+                BorderThickness="1" CornerRadius="12" Padding="8">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -160,7 +163,7 @@
         <!-- Estado -->
         <StackPanel Grid.Row="4" Margin="2,10,2,0">
             <ProgressBar x:Name="Progress" Height="4" Minimum="0" Maximum="1" Visibility="Collapsed" Margin="0,0,0,6" />
-            <TextBlock x:Name="StatusText" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource AccentBrush}" />
+            <TextBlock x:Name="StatusText" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource AccentTextBrush}" />
         </StackPanel>
 
         <!-- Acciones -->
@@ -171,10 +174,10 @@
                       ToolTip="Sin marcar, al bajar solo se descargan los archivos que faltan en este equipo. Al subir, los archivos distintos siempre reemplazan a los de la nube." />
             <Button DockPanel.Dock="Right" Content="Cerrar" IsCancel="True" Click="Close_Click"
                     Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" />
-            <Button DockPanel.Dock="Right" x:Name="DownloadButton" Content="⬇ Bajar marcadas" Click="Download_Click"
+            <Button DockPanel.Dock="Right" x:Name="DownloadButton" Content="Bajar marcadas" Tag="&#xE896;" Click="Download_Click"
                     Margin="8,0,0,0"
                     ToolTip="Descarga a este equipo lo que falta de las sesiones marcadas" />
-            <Button DockPanel.Dock="Right" x:Name="UploadButton" Content="⬆ Subir marcadas" Click="Upload_Click"
+            <Button DockPanel.Dock="Right" x:Name="UploadButton" Content="Subir marcadas" Tag="&#xE898;" Click="Upload_Click"
                     ToolTip="Sube lo que falta arriba y reemplaza lo que cambió (no borra nada en la nube ni sube dos veces lo mismo)" />
         </DockPanel>
     </Grid>

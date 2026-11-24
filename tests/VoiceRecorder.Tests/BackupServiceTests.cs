@@ -26,7 +26,7 @@ public sealed class BackupServiceTests : IDisposable
         var id = store.SaveSession("a", new DateTime(2026, 1, 1), TimeSpan.Zero, "", "", []);
         store.UpdateSession(id, "b", "", "");
 
-        await Task.Delay(300);
+        await Task.Delay(300, TestContext.Current.CancellationToken);
         Assert.Equal(0, target.UploadCalls);
         Assert.Empty(target.Files);
     }

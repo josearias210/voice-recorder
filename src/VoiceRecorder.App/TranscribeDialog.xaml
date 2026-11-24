@@ -4,11 +4,13 @@
         Title="Transcribir"
         Width="560" SizeToContent="Height" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource WindowBackground}">
-    <Border Margin="14" Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderBrush}"
-            BorderThickness="1" CornerRadius="10" Padding="16">
+        Background="{DynamicResource WindowBackground}"
+        Foreground="{DynamicResource TextBrush}"
+        FontFamily="{StaticResource AppFont}">
+    <Border Margin="16" Style="{StaticResource Card}"
+            Padding="22,20">
         <StackPanel>
-            <TextBlock x:Name="HeaderText" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
+            <TextBlock x:Name="HeaderText" Style="{StaticResource DialogTitle}" />
             <TextBlock x:Name="MessageText" TextWrapping="Wrap" Margin="0,6,0,14" Foreground="{DynamicResource TextBrush}" />
 
             <TextBlock Text="Transcribir con:" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,6" />
@@ -28,7 +30,7 @@
             <DockPanel Margin="0,18,0,0" LastChildFill="False">
                 <Button DockPanel.Dock="Right" x:Name="DeclineButton" IsCancel="True" Click="Decline_Click"
                         Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" />
-                <Button DockPanel.Dock="Right" Content="Transcribir" IsDefault="True" Click="Transcribe_Click" />
+                <Button DockPanel.Dock="Right" Content="Transcribir" Tag="&#xE70F;" IsDefault="True" Click="Transcribe_Click" />
             </DockPanel>
         </StackPanel>
     </Border>

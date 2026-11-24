@@ -73,8 +73,8 @@ Requisitos: [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0) y W
 
 ## 📖 Uso
 
-1. Entra a tu llamada (Meet, Teams, Zoom, …) y pulsa **▶ Iniciar**. Arranca al instante y graba dos WAV: `grabacion-<fecha>-micro.wav` (tu voz) y `grabacion-<fecha>-llamada.wav` (la otra persona).
-2. **⏸ Pausar** si necesitas un descanso · **■ Detener** para guardar la sesión con su audio.
+1. Entra a tu llamada (Meet, Teams, Zoom, …) y pulsa **Iniciar**. Arranca al instante y graba dos WAV: `grabacion-<fecha>-micro.wav` (tu voz) y `grabacion-<fecha>-llamada.wav` (la otra persona).
+2. **Pausar** si necesitas un descanso · **Detener** para guardar la sesión con su audio.
 3. Al detener, la app pregunta si quieres **transcribir ahora** y con qué motor (propone el de por defecto). Si eliges *Más tarde*, la sesión queda «sin transcribir».
 4. En el **Historial**, **Transcribir…** transcribe la sesión seleccionada o **regenera** su transcripción (por ejemplo, con otro motor o modelo). La transcripción anterior se reemplaza solo cuando termina la nueva.
 5. Abre la sesión para verla como chat (`Yo` a la derecha, `Ellos` a la izquierda), editar título y etiquetas o **exportar** (TXT/MD/SRT).
@@ -96,7 +96,7 @@ Con OpenAI, la detección de voz sigue siendo local: solo se envían los tramos 
 
 ### Costes
 
-**💲 Costes…** (bajo el historial) muestra cuánto llevas gastado este mes, el total y el tiempo dedicado a transcribir, con el detalle de cada transcripción: fecha, sesión, motor y modelo, minutos de audio, tiempo y coste. Cada sesión del historial muestra además su última transcripción, por ejemplo `OpenAI · 3 min 20 s · ≈ 0,0140 USD`.
+**Costes…** (bajo el historial) muestra cuánto llevas gastado este mes, el total y el tiempo dedicado a transcribir, con el detalle de cada transcripción: fecha, sesión, motor y modelo, minutos de audio, tiempo y coste. Cada sesión del historial muestra además su última transcripción, por ejemplo `OpenAI · 3 min 20 s · ≈ 0,0140 USD`.
 
 - **Whisper local** cuesta 0: solo se registra el tiempo.
 - **OpenAI**: coste estimado = minutos de voz enviados × precio por minuto. El precio (0,0045 USD por defecto) se puede ajustar en **Transcripción…**. Si una transcripción falla o se cancela a medias, lo ya enviado también se registra, porque OpenAI lo cobra igual. El importe real es el de tu panel de OpenAI (botón *Ver uso real en OpenAI*).
@@ -139,7 +139,7 @@ Si venías de una versión anterior, la antigua `sessions.db` se migra automáti
 
 **Backup externo (Azure Blob Storage)**: por defecto todo se queda en local. En **Backup externo…** (barra de ajustes) activa *Usar backup en Azure Blob Storage* e indica la cuenta de almacenamiento, el contenedor (se crea si no existe; por defecto `voice-recorder`) y la *access key* de la cuenta (o una cadena de conexión). La clave se guarda cifrada con DPAPI para tu usuario de Windows.
 
-El backup es **siempre manual**: la app nunca sube ni baja nada por su cuenta. Pulsa **☁ Sincronizar…** (bajo el historial) y verás la comparación entre local y la nube, archivo por archivo (MD5):
+El backup es **siempre manual**: la app nunca sube ni baja nada por su cuenta. Pulsa **Sincronizar…** (bajo el historial) y verás la comparación entre local y la nube, archivo por archivo (MD5):
 
 - **Sincronizado al N %** y cuatro contadores: ✓ sincronizados (iguales en ambos lados), ⬆ en local y no arriba (falta subir), ⬇ arriba y no en local (falta bajar) y ≠ en ambos con contenido distinto.
 - La lista de sesiones con el estado de cada una (filtrable); pasando el ratón se ve el estado de cada archivo.
