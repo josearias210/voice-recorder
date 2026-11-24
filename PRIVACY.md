@@ -2,7 +2,7 @@
 
 > Última actualización: 2026-11-24 (revisión 2026-11-24.2) · Aplica a partir de la versión 1.7.0
 
-**En una frase:** Voice Recorder graba y guarda el audio **en tu equipo** y por defecto también lo transcribe ahí; el audio y el texto solo salen de tu disco cuando tú eliges transcribir con OpenAI, generar un resumen con OpenAI, subir una sesión a tu Notion o hacer un backup a tu propia cuenta de Azure.
+**En una frase:** Voice Recorder graba y guarda el audio **en tu equipo** y por defecto también lo transcribe ahí; el audio y el texto solo salen de tu disco cuando tú eliges transcribir con OpenAI, generar un resumen o un análisis con OpenAI, subir una sesión a tu Notion o hacer un backup a tu propia cuenta de Azure.
 
 ## 1. Qué hace la aplicación
 
