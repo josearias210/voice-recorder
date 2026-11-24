@@ -10,7 +10,8 @@
          settings.json nuevo; si no, la app se quedaría esperando ese diálogo.
       2. Lanza el ejecutable y espera a su ventana principal.
       3. Maximiza la ventana y comprueba con UI Automation que se ven los
-         controles principales («Iniciar», «Historial de sesiones»).
+         controles principales («Iniciar», «Historial», «Configuración») y que
+         el botón «Historial» abre el panel lateral, oculto al arrancar.
       4. Guarda una captura de toda la pantalla y comprueba que la app sigue viva.
     Sale con código distinto de 0 si algo falla; siempre que pueda deja la
     captura, también la del fallo.
@@ -112,13 +113,26 @@ try {
     [E2E.Native]::SetForegroundWindow($process.MainWindowHandle) | Out-Null
     Start-Sleep -Seconds 3
 
-    foreach ($name in 'Iniciar', 'Historial de sesiones', 'Transcripción…') {
+    foreach ($name in 'Iniciar', 'Historial', 'Configuración') {
         if (-not (Find-Element $window $name)) {
             throw "No se encontró el elemento «$name» en la ventana principal."
         }
 
         $checks.Add("Elemento visible: «$name»")
     }
+
+    # The history panel is hidden by default: open it and check it shows up.
+    if (Find-Element $window 'Historial de sesiones') {
+        throw 'El historial debería estar oculto al arrancar.'
+    }
+
+    (Find-Element $window 'Historial').GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    Start-Sleep -Seconds 1
+    if (-not (Find-Element $window 'Historial de sesiones')) {
+        throw 'El botón «Historial» no abrió el panel del historial.'
+    }
+
+    $checks.Add('El botón «Historial» abre el panel lateral')
 
     Save-Screenshot $screenshot
     $checks.Add('Captura guardada')
