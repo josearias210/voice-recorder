@@ -22,12 +22,16 @@ Meet · Teams · Zoom · WhatsApp Web · Discord — si suena en tu PC, se trans
 
 - 🔌 **Universal**: captura el audio a nivel de sistema (WASAPI Loopback + micrófono). No depende de Meet, Teams, Zoom ni de ninguna app concreta.
 - 👥 **¿Quién dijo qué?**: burbujas `Yo` / `Ellos` separadas por detección de voz (VAD Silero) en cada canal.
-- 🔒 **Local por defecto**: transcripción con Whisper (whisper.cpp) en tu máquina. Nada sale de tu PC salvo que elijas OpenAI o el backup opcional.
+- 🔒 **Local por defecto**: transcripción con Whisper (whisper.cpp) en tu máquina. Nada sale de tu PC salvo que elijas OpenAI (transcripción, resumen o análisis), subir a Notion o el backup opcional.
 - 🧠 **Dos motores**: Whisper local (gratis) u OpenAI `gpt-transcribe` (de pago, con tu clave). Eliges el motor por defecto en **Configuración › Transcripción…** y puedes cambiarlo cada vez que transcribes.
 - 🔁 **Transcribe cuando quieras y regenera**: al detener la grabación la app pregunta si transcribir ahora; desde el historial (botón **Historial**), **Transcribir…** vuelve a transcribir el audio guardado con el motor que elijas.
 - ⏸ **Pausar y reanudar**: el cronómetro de sesión excluye las pausas.
 - 💾 **Historial con etiquetas**: sesiones guardadas como carpetas (`Sesiones/AAAA/MM/…`), reabribles como vista de chat, con backup manual opcional en tu Azure Blob Storage.
-- 📤 **Exportar**: TXT, Markdown y SRT (subtítulos).
+- 🧾 **Resumen con IA**: puntos clave, decisiones, tareas y preguntas abiertas generados con OpenAI a partir del texto (nunca del audio). Se pide a mano en cada sesión o, si lo activas, se genera solo al terminar cada transcripción.
+- 🗂️ **Subir a Notion**: crea una página en tu base de datos de Notion con lo que elijas: resumen, transcripción y/o análisis. Al terminar de transcribir la app pregunta si quieres subirla; nunca sube nada sin confirmación.
+- 🧪 **Análisis de comunicación (experimental)**: evalúa cómo condujiste la conversación con criterios de buenas prácticas (escucha, empatía, manejo del desacuerdo, persuasión…), con aciertos, fallas y mejoras concretas. Desactivado por defecto; se genera solo cuando lo pides.
+- 📊 **Estado de cada sesión en la sincronización**: transcrita, con resumen, analizada, subida a Notion, y si falta subirla o bajarla del backup.
+- 📤 **Exportar**: TXT, Markdown (con el resumen y el análisis, si los hay) y SRT (subtítulos).
 - **Transcribir archivos**: importa audio o vídeo (mp3, wav, m4a, mp4, mkv, mov, …) arrastrándolos a la ventana o con el botón *Transcribir archivo*; cada archivo se guarda como una sesión del historial.
 - 🖥️ **Bandeja del sistema**: control Iniciar/Pausar/Detener sin abrir la ventana, y accesos a Historial y Configuración.
 - 🔄 **Auto-actualización**: con deltas incrementales vía [Velopack](https://github.com/velopack/velopack).
@@ -102,7 +106,42 @@ Con OpenAI, la detección de voz sigue siendo local: solo se envían los tramos 
 
 - **Whisper local** cuesta 0: solo se registra el tiempo.
 - **OpenAI**: coste estimado = minutos de voz enviados × precio por minuto. El precio (0,0045 USD por defecto) se puede ajustar en **Transcripción…**. Si una transcripción falla o se cancela a medias, lo ya enviado también se registra, porque OpenAI lo cobra igual. El importe real es el de tu panel de OpenAI (botón *Ver uso real en OpenAI*).
-- El registro (`%LOCALAPPDATA%VoiceRecorder	ranscripciones.jsonl`) se conserva aunque borres sesiones.
+- Los **resúmenes** y los **análisis de comunicación** también aparecen, como «OpenAI (resumen)» y «OpenAI (análisis)»: su coste se estima por tokens (precio por millón en **Resumen…**).
+- El registro (`%LOCALAPPDATA%\VoiceRecorder\transcripciones.jsonl`) se conserva aunque borres sesiones.
+
+### Resumen con IA
+
+Abre una sesión transcrita y pulsa **Generar resumen**. La app envía a OpenAI, con tu clave de **Transcripción…**, el texto de la transcripción (con `Yo`/`Ellos` y las marcas de tiempo), el título y las notas, y guarda en la sesión un resumen con estas secciones: *Resumen*, *Puntos clave*, *Decisiones*, *Tareas* y *Preguntas abiertas*. El audio nunca se envía.
+
+En **Configuración › Resumen…** puedes:
+
+- activar **Generar el resumen automáticamente** al terminar cada transcripción (desactivado por defecto);
+- elegir el modelo (por defecto `gpt-5-mini`) y el precio por millón de tokens, que se usa para estimar el coste en **Costes…**.
+
+Con el modelo por defecto, el resumen de una llamada de una hora suele costar alrededor de un céntimo de dólar. *Regenerar resumen* lo reemplaza. Revisa el resultado: la IA puede omitir o malinterpretar cosas.
+
+### Subir a Notion
+
+1. Crea una **integración interna** en [notion.so/profile/integrations](https://www.notion.so/profile/integrations) y copia su token.
+2. Crea (o elige) una **base de datos** y, en su menú **… › Conexiones**, añade tu integración.
+3. En **Configuración › Notion…**, activa *Usar Notion como destino* y pega el token y el enlace de la base de datos. *Probar conexión* comprueba el acceso sin crear nada.
+
+Cada sesión se crea como una página: el título va en la propiedad de título y, si existen, se rellenan **Fecha** (fecha), **Etiquetas** (selección múltiple) y **Duración** (número en minutos, o texto). Dentro van las notas y lo que marques en **Qué se sube**: el **resumen**, la **transcripción** completa (en un encabezado plegable) y/o el **análisis de comunicación** (también plegable, solo si el experimento está activo). Puedes marcar uno, otro o varios. El audio no se sube.
+
+Al terminar una transcripción la app pregunta si quieres subir la sesión (puedes desactivar la pregunta en **Notion…**). También puedes subirla cuando quieras con **Subir a Notion** desde el chat de la sesión, que después muestra el enlace a la página. Si vuelves a subirla, se crea una página nueva y la anterior se mueve a la papelera de Notion. El token se guarda cifrado con DPAPI.
+
+### Análisis de comunicación (experimental)
+
+Actívalo en **Configuración › Experimental**. Viene desactivado. Después, en el chat de una sesión transcrita, pulsa **Analizar conversación** (o *Reanalizar* para regenerarlo). Nunca se genera solo.
+
+Evalúa solo tu parte de la conversación (`Yo`) con ocho criterios de buenas prácticas: escucha activa, interés genuino por el otro, reconocimiento sincero, tono y cordialidad, manejo del desacuerdo, empatía, persuasión colaborativa, y peticiones y feedback. El resultado siempre tiene la misma estructura:
+
+- **Valoración general** (de 1 a 10);
+- **Criterios evaluados**, cada uno de 1 a 5 con una evidencia y su marca de tiempo;
+- **Aciertos**, **Fallas** y **Mejoras**, con frases alternativas que podrías haber dicho;
+- **Para la próxima llamada**: tres prioridades como máximo.
+
+Se envía a OpenAI el texto de la transcripción y unas estadísticas de habla calculadas en tu equipo (tiempo de habla, turnos y preguntas), nunca el audio. El coste aparece en **Costes…** como «OpenAI (análisis)». Es orientativo: la transcripción tiene errores y la IA puede equivocarse.
 
 ### Transcribir archivos de audio o vídeo
 
@@ -144,7 +183,7 @@ Si venías de una versión anterior, la antigua `sessions.db` se migra automáti
 El backup es **siempre manual**: la app nunca sube ni baja nada por su cuenta. Pulsa **Sincronizar…** (en **Configuración**) y verás la comparación entre local y la nube, archivo por archivo (MD5):
 
 - **Sincronizado al N %** y cuatro contadores: ✓ sincronizados (iguales en ambos lados), ⬆ en local y no arriba (falta subir), ⬇ arriba y no en local (falta bajar) y ≠ en ambos con contenido distinto.
-- La lista de sesiones con el estado de cada una (filtrable); pasando el ratón se ve el estado de cada archivo.
+- La lista de sesiones con el estado de cada una (filtrable); pasando el ratón se ve el estado de cada archivo. Cada sesión indica además qué se ha hecho con ella: ✓ transcrita (o ○ sin transcribir), con resumen, analizada y subida a Notion. Hay filtros para ver las que faltan por transcribir, resumir, analizar o subir a Notion.
 - **⬆ Subir marcadas** sube lo que falta y reemplaza en la nube los archivos con el mismo nombre que cambiaron; los idénticos no se vuelven a subir.
 - **⬇ Bajar marcadas** descarga a este equipo lo que falta (p. ej. al usar la app en otro ordenador), con la misma estructura de carpetas; *sobrescribir archivos locales distintos* reemplaza también los que hayan cambiado. Las sesiones descargadas aparecen en el historial al momento.
 - Nunca se borra nada en la nube: borrar una sesión en local **no** la borra del backup.
@@ -162,14 +201,16 @@ El backup es **siempre manual**: la app nunca sube ni baja nada por su cuenta. P
 - **VAD Silero (ONNX)**: detecta voz real y descarta silencios; canales separados → atribución de hablante sin diarización compleja.
 - **Whisper local**: transcripción con [Whisper.net](https://github.com/sandrohanea/whisper.net) (whisper.cpp).
 - **Carpetas**: cada sesión es una carpeta con `session.json` (y sus WAV si grabas audio primero); `sessions.db` antiguo se migra solo.
+- **Resumen y análisis**: opcionales, con la API de OpenAI a partir del texto de la transcripción (nunca del audio); se guardan en el `session.json` de la sesión.
+- **Notion**: subida opcional y siempre confirmada a tu base de datos con la API de Notion; la transcripción y el análisis van en encabezados plegables.
 
 ### Estructura del repositorio
 
 ```
 src/VoiceRecorder.Core          · DTOs e interfaces
 src/VoiceRecorder.Audio         · Captura WASAPI dual + resampleo 16 kHz
-src/VoiceRecorder.Transcription · VAD + Whisper + orquestador de sesión
-src/VoiceRecorder.Storage       · Persistencia en carpetas + backup Azure
+src/VoiceRecorder.Transcription · VAD + Whisper + OpenAI (transcripción y resumen) + orquestador de sesión
+src/VoiceRecorder.Storage       · Persistencia en carpetas + backup Azure + subida a Notion
 src/VoiceRecorder.App           · UI WPF (chat, historial, bandeja, updates)
 tools/CaptureVerifier           · Verifica captura de audio (Fase 1)
 tools/PipelineVerifier          · Verificación E2E del pipeline
@@ -182,7 +223,8 @@ scripts/                        · Build/publish y tareas Docker
 
 - [x] Guardar audio opcional (WAV por sesión)
 - [ ] Captura por proceso (ignorar notificaciones y música)
-- [ ] Resúmenes automáticos con IA local (Ollama)
+- [x] Resúmenes con IA (OpenAI) y subida a Notion
+- [ ] Resúmenes con IA local (Ollama)
 - [x] Búsqueda en títulos, etiquetas, notas y texto de las transcripciones
 - [ ] Identificación de hablantes reales (diarización)
 
@@ -233,7 +275,7 @@ Ver [CONTRIBUTING.md](CONTRIBUTING.md) para convenciones y flujo de PRs.
 
 - El audio de las llamadas se graba y, por defecto, se transcribe **en tu equipo** (Whisper + Silero VAD locales).
 - No hay telemetría, analytics ni informes de fallos. Por su cuenta, la app solo descarga los modelos que tú pides y comprueba si hay actualizaciones en GitHub Releases.
-- Las grabaciones y transcripciones se guardan en tu disco (`%LOCALAPPDATA%\VoiceRecorder\Sesiones`). Solo salen de él si eliges transcribir con **OpenAI** (los tramos con voz se envían a OpenAI con tu clave) o si haces un backup a tu propia cuenta de Azure.
+- Las grabaciones y transcripciones se guardan en tu disco (`%LOCALAPPDATA%\VoiceRecorder\Sesiones`). Solo salen de él si eliges transcribir con **OpenAI** (los tramos con voz se envían a OpenAI con tu clave), si generas un **resumen** o un **análisis de comunicación** (el texto de la transcripción se envía a OpenAI), si subes una sesión a **Notion** (a tu propia base de datos, siempre tras confirmarlo) o si haces un backup a tu propia cuenta de Azure.
 - Detalles completos en [PRIVACY.md](PRIVACY.md).
 - Respeta la legislación y el consentimiento de tu jurisdicción antes de grabar conversaciones — lee el [aviso legal](DISCLAIMER.md).
 
@@ -251,10 +293,12 @@ Windows desktop app that records and transcribes **any call app** (Meet, Teams, 
 
 - **Install**: grab the setup or portable ZIP from [Releases](../../releases).
 - **Import & transcribe files**: drag audio/video files (mp3, mp4, m4a, mkv, …) onto the window — each one is saved as a session, fully local.
+- **AI summary & Notion**: generate a summary (key points, decisions, tasks) with OpenAI from the transcript text, on demand or automatically after each transcription, and upload the session to your own Notion database (summary, transcript and/or review, as you choose) — the app always asks first.
+- **Communication review (experimental, off by default)**: on demand, rates how you led the conversation against good-practice criteria, with strengths, failures and concrete improvements.
 - **Build**: `dotnet build VoiceRecorder.slnx` (needs .NET 10 SDK, Windows; targets .NET 10).
 - **Test**: `dotnet test`.
 - **License**: MIT.
 
-> ⚠️ Recording conversations may require the consent of all parties depending on your jurisdiction. The app is built for a participant transcribing their own call: it is always visible, records only when you press Start and never sends recordings anywhere on its own. Data leaves your PC only when you choose it: OpenAI transcription, or a manual backup to your own Azure account. Covert recording or surveillance is not a permitted use.
+> ⚠️ Recording conversations may require the consent of all parties depending on your jurisdiction. The app is built for a participant transcribing their own call: it is always visible, records only when you press Start and never sends recordings anywhere on its own. Data leaves your PC only when you choose it: OpenAI transcription or summaries, a confirmed upload to your own Notion database, or a manual backup to your own Azure account. Covert recording or surveillance is not a permitted use.
 >
 > 🛡️ The installer is not code-signed yet, so Windows SmartScreen may warn you (*More info → Run anyway*), or install with Scoop. Verify downloads against `SHA256SUMS.txt`.

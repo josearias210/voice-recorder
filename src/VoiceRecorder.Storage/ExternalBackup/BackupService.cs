@@ -47,7 +47,13 @@ public sealed record FileSyncStatus(string RelativePath, SyncState State, long L
 /// <param name="Title">Título (de su session.json local o de la nube).</param>
 /// <param name="StartedAt">Fecha de inicio, si se pudo leer.</param>
 /// <param name="Files">Estado de cada archivo.</param>
-public sealed record SessionSyncStatus(string Folder, string Title, DateTime? StartedAt, IReadOnlyList<FileSyncStatus> Files)
+/// <param name="Info">What the session has (transcript, summary, review, Notion), read from its <c>session.json</c>; null if unreadable.</param>
+public sealed record SessionSyncStatus(
+    string Folder,
+    string Title,
+    DateTime? StartedAt,
+    IReadOnlyList<FileSyncStatus> Files,
+    FileSessionStore.SessionInfo? Info = null)
 {
     public int SyncedCount => Files.Count(f => f.State == SyncState.Synced);
 
@@ -148,7 +154,8 @@ public sealed class BackupService : IDisposable
                     group.Key,
                     info?.Title ?? (group.Key.Length == 0 ? "(raíz)" : group.Key[(group.Key.LastIndexOf('/') + 1)..]),
                     info?.StartedAt,
-                    group.OrderBy(f => f.RelativePath, StringComparer.Ordinal).ToList()));
+                    group.OrderBy(f => f.RelativePath, StringComparer.Ordinal).ToList(),
+                    info));
             }
 
             return new SyncComparison(sessions

@@ -9,7 +9,9 @@
     <Grid Margin="14">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -66,8 +68,53 @@
             </Grid>
         </Border>
 
+        <!-- Resumen y análisis (IA) -->
+        <!-- Capped so the conversation keeps room on small screens. -->
+        <ScrollViewer Grid.Row="1" MaxHeight="210" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+        <StackPanel>
+        <Border Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1" CornerRadius="12" Padding="10,6" Margin="0,0,0,10"
+                Visibility="{Binding HasCallSummary, Converter={StaticResource BoolToVis}}">
+            <Expander IsExpanded="True" Foreground="{DynamicResource TextBrush}">
+                <Expander.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Resumen" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding CallSummaryInfo}" Foreground="{DynamicResource MutedBrush}" FontSize="11"
+                                   Margin="10,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Expander.Header>
+                <TextBox Text="{Binding CallSummaryText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
+                         MaxHeight="150" VerticalScrollBarVisibility="Auto" Margin="0,6,0,2"
+                         Background="Transparent" BorderThickness="0"
+                         Foreground="{DynamicResource TextBrush}" CaretBrush="{DynamicResource TextBrush}"
+                         ToolTip="Resumen generado con OpenAI a partir de la transcripción. Puede contener errores: revísalo." />
+            </Expander>
+        </Border>
+        <Border Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1" CornerRadius="12" Padding="10,6" Margin="0,0,0,10"
+                Visibility="{Binding ShowReview, Converter={StaticResource BoolToVis}}">
+            <Expander IsExpanded="False" Foreground="{DynamicResource TextBrush}">
+                <Expander.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Análisis de comunicación" FontWeight="SemiBold" />
+                        <TextBlock Text="experimental" Foreground="{DynamicResource MutedBrush}" FontSize="11" FontStyle="Italic"
+                                   Margin="8,0,0,0" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding ReviewInfo}" Foreground="{DynamicResource MutedBrush}" FontSize="11"
+                                   Margin="10,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Expander.Header>
+                <TextBox Text="{Binding ReviewText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
+                         MaxHeight="150" VerticalScrollBarVisibility="Auto" Margin="0,6,0,2"
+                         Background="Transparent" BorderThickness="0"
+                         Foreground="{DynamicResource TextBrush}" CaretBrush="{DynamicResource TextBrush}"
+                         ToolTip="Evaluación generada con OpenAI de cómo condujiste la conversación. Es orientativa: revísala con criterio." />
+            </Expander>
+        </Border>
+        </StackPanel>
+        </ScrollViewer>
+
         <!-- Chat -->
-        <Border Grid.Row="1" Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderBrush}"
+        <Border Grid.Row="2" Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="1" CornerRadius="12" Padding="6">
             <ScrollViewer x:Name="ChatScroll" VerticalScrollBarVisibility="Auto">
                 <ItemsControl ItemsSource="{Binding Segments}" ItemTemplate="{StaticResource ChatBubbleTemplate}"
@@ -76,21 +123,45 @@
         </Border>
 
         <!-- Notas -->
-        <Border Grid.Row="2" Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderBrush}"
+        <Border Grid.Row="3" Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="1" CornerRadius="12" Padding="10,6" Margin="0,10,0,0">
             <StackPanel>
                 <TextBlock Text="Notas de la sesión" FontWeight="SemiBold" FontSize="11"
                            Foreground="{DynamicResource MutedBrush}" Margin="2,2,0,4" />
                 <TextBox Text="{Binding SessionNotes, UpdateSourceTrigger=PropertyChanged}"
-                         AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72" MaxHeight="140"
+                         AcceptsReturn="True" TextWrapping="Wrap" MinHeight="48" MaxHeight="120"
                          VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top"
                          Background="Transparent" Foreground="{DynamicResource TextBrush}" CaretBrush="{DynamicResource TextBrush}"
                          ToolTip="Notas libres sobre la sesión (p. ej. acuerdos, tareas). Se guardan con «Guardar cambios»." />
             </StackPanel>
         </Border>
 
+        <!-- Resumen y Notion -->
+        <DockPanel Grid.Row="4" Margin="4,10,4,0">
+            <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0"
+                       Visibility="{Binding HasNotionLink, Converter={StaticResource BoolToVis}}">
+                <Hyperlink Click="OpenNotion_Click" Foreground="{DynamicResource AccentTextBrush}">
+                    <Run Text="{Binding NotionLinkText, Mode=OneWay}" />
+                </Hyperlink>
+            </TextBlock>
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="SummaryButton" Content="{Binding SummaryButtonText}" Tag="&#xE8BD;" Style="{StaticResource SecondaryButton}"
+                        Click="Summarize_Click"
+                        ToolTip="Genera con OpenAI un resumen con puntos clave, decisiones y tareas. Solo se envía el texto de la transcripción (nunca el audio), con tu clave." />
+                <Button x:Name="ReviewButton" Content="{Binding ReviewButtonText}" Tag="&#xE9D9;" Style="{StaticResource SecondaryButton}"
+                        Margin="6,0,0,0" Click="Review_Click"
+                        Visibility="{Binding IsReviewEnabled, Converter={StaticResource BoolToVis}}"
+                        ToolTip="Experimental: evalúa con OpenAI cómo condujiste la conversación (escucha, empatía, manejo del desacuerdo, persuasión) y propone mejoras. Solo se envía el texto." />
+                <Button x:Name="NotionButton" Content="Subir a Notion" Tag="&#xE898;" Style="{StaticResource SecondaryButton}"
+                        Margin="6,0,0,0" Click="UploadNotion_Click"
+                        ToolTip="Crea una página en tu base de datos de Notion con el resumen y la transcripción. Se configura en Configuración › «Notion…»." />
+                <TextBlock Text="{Binding ActionStatus}" VerticalAlignment="Center" Margin="10,0,0,0" TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource MutedBrush}" FontSize="11" />
+            </StackPanel>
+        </DockPanel>
+
         <!-- Acciones -->
-        <DockPanel Grid.Row="3" Margin="4,10,4,0">
+        <DockPanel Grid.Row="5" Margin="4,10,4,0">
             <Button DockPanel.Dock="Right" Content="Cerrar" Style="{StaticResource SecondaryButton}" Click="Close_Click" />
             <Button DockPanel.Dock="Right" Content="Eliminar sesión" Tag="&#xE74D;" Style="{StaticResource DangerButton}"
                     Click="Delete_Click" Margin="0,0,8,0" />

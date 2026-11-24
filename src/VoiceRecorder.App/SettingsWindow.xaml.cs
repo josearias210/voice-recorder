@@ -24,6 +24,19 @@ public partial class SettingsWindow : Window
         _settings = settings;
         _backup = backup;
         DataContext = viewModel;
+        ReviewBox.IsChecked = settings?.ReviewEnabled == true;
+        ReviewBox.IsEnabled = settings is not null;
+    }
+
+    private void ReviewBox_Click(object sender, RoutedEventArgs e)
+    {
+        if (_settings is null)
+        {
+            return;
+        }
+
+        _settings.ReviewEnabled = ReviewBox.IsChecked == true;
+        _settings.Save();
     }
 
     private void Model_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) =>
@@ -35,6 +48,22 @@ public partial class SettingsWindow : Window
         {
             new TranscriptionSettingsWindow(_settings) { Owner = this }.ShowDialog();
             _viewModel.RefreshConfigSummary(); // The default engine may have changed.
+        }
+    }
+
+    private void SummarySettings_Click(object sender, RoutedEventArgs e)
+    {
+        if (_settings is not null)
+        {
+            new SummarySettingsWindow(_settings) { Owner = this }.ShowDialog();
+        }
+    }
+
+    private void NotionSettings_Click(object sender, RoutedEventArgs e)
+    {
+        if (_settings is not null)
+        {
+            new NotionSettingsWindow(_settings) { Owner = this }.ShowDialog();
         }
     }
 

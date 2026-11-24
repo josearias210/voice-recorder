@@ -120,6 +120,43 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Resumen y destino -->
+                <Border Style="{StaticResource SectionCard}">
+                    <StackPanel>
+                        <StackPanel Style="{StaticResource SectionHeader}">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE8BD;" Foreground="{DynamicResource MutedBrush}" Margin="0,0,8,0" />
+                            <TextBlock Text="Resumen y destino" Style="{StaticResource SectionTitle}" />
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource Hint}"
+                                   Text="El resumen (OpenAI) se pide a mano en cada sesión salvo que actives el modo automático. Tras transcribir, la app puede preguntar si subir la sesión a Notion; nunca sube nada sin confirmación." />
+                        <WrapPanel>
+                            <Button Content="Resumen…" Tag="&#xE8BD;" Click="SummarySettings_Click"
+                                    Style="{StaticResource SecondaryButton}" Margin="0,0,8,8"
+                                    ToolTip="Resumen con OpenAI: manual o automático al terminar cada transcripción, modelo y precio" />
+                            <Button Content="Notion…" Tag="&#xE898;" Click="NotionSettings_Click"
+                                    Style="{StaticResource SecondaryButton}" Margin="0,0,8,8"
+                                    ToolTip="Token de tu integración de Notion y base de datos donde se crean las sesiones" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Experimental -->
+                <Border Style="{StaticResource SectionCard}">
+                    <StackPanel>
+                        <StackPanel Style="{StaticResource SectionHeader}">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE9D9;" Foreground="{DynamicResource MutedBrush}" Margin="0,0,8,0" />
+                            <TextBlock Text="Experimental" Style="{StaticResource SectionTitle}" />
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource Hint}"
+                                   Text="Funciones en prueba: pueden cambiar o desaparecer. Están desactivadas por defecto." />
+                        <CheckBox x:Name="ReviewBox" Click="ReviewBox_Click" Foreground="{DynamicResource TextBrush}">
+                            <TextBlock TextWrapping="Wrap">
+                                <Run Text="Análisis de comunicación" FontWeight="SemiBold" /><Run Text=" · evalúa cómo condujiste la conversación (escucha activa, interés por el otro, tono, manejo del desacuerdo, empatía, persuasión y forma de pedir o dar feedback) con aciertos, fallas y mejoras concretas. Se genera solo cuando pulsas «Analizar conversación» en una sesión, con OpenAI (de pago); se envía el texto, nunca el audio." />
+                            </TextBlock>
+                        </CheckBox>
+                    </StackPanel>
+                </Border>
+
                 <!-- Apariencia -->
                 <Border Style="{StaticResource SectionCard}">
                     <StackPanel>

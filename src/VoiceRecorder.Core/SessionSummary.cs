@@ -9,6 +9,9 @@ namespace VoiceRecorder.Core;
 /// <param name="Notes">Notas libres.</param>
 /// <param name="SegmentCount">Número de segmentos transcritos.</param>
 /// <param name="LastTranscription">Última transcripción (motor, tiempo y coste), si la hay.</param>
+/// <param name="CallSummary">Resumen generado con IA, si lo hay.</param>
+/// <param name="Notion">Página de Notion donde se subió la sesión, si se subió.</param>
+/// <param name="Review">Análisis de comunicación (experimental) generado con IA, si lo hay.</param>
 public sealed record SessionSummary(
     long Id,
     string Title,
@@ -17,4 +20,7 @@ public sealed record SessionSummary(
     string Tags,
     string Notes,
     int SegmentCount,
-    TranscriptionRun? LastTranscription = null);
+    TranscriptionRun? LastTranscription = null,
+    CallSummary? CallSummary = null,
+    NotionExport? Notion = null,
+    CallSummary? Review = null);

@@ -14,15 +14,17 @@ public partial class ChatWindow : Window, INotifyPropertyChanged
 {
     private readonly ISessionStore _store;
     private readonly Action _onChanged;
+    private readonly MainViewModel? _actions;
     private readonly IReadOnlyList<TranscriptSegment> _segments;
     private readonly int _wordCount;
     private bool _dirty;
 
-    public ChatWindow(ISessionStore store, SessionSummary summary, Action onChanged)
+    public ChatWindow(ISessionStore store, SessionSummary summary, Action onChanged, MainViewModel? actions = null)
     {
         InitializeComponent();
         _store = store;
         _onChanged = onChanged;
+        _actions = actions;
 
         var loaded = store.GetSession(summary.Id)!.Value;
         Summary = loaded.Session;
@@ -79,6 +81,36 @@ public partial class ChatWindow : Window, INotifyPropertyChanged
     public string WordChip => _wordCount == 1 ? "1 palabra" : $"{_wordCount:N0} palabras";
 
     public List<SegmentVm> Segments { get; }
+
+    public bool HasCallSummary => Summary.CallSummary is not null;
+
+    public string CallSummaryText => Summary.CallSummary?.Text ?? string.Empty;
+
+    public string CallSummaryInfo => Summary.CallSummary is { } s
+        ? $"{s.Model} · {s.CreatedAt:dd/MM/yyyy HH:mm} · {CostFormat.Cost(s.CostUsd)}"
+        : string.Empty;
+
+    public string SummaryButtonText => HasCallSummary ? "Regenerar resumen" : "Generar resumen";
+
+    public bool IsReviewEnabled => _actions?.IsReviewEnabled == true;
+
+    /// <summary>The review panel is shown while the experiment is on and there is a review.</summary>
+    public bool ShowReview => IsReviewEnabled && Summary.Review is not null;
+
+    public string ReviewText => Summary.Review?.Text ?? string.Empty;
+
+    public string ReviewInfo => Summary.Review is { } r
+        ? $"{r.Model} · {r.CreatedAt:dd/MM/yyyy HH:mm} · {CostFormat.Cost(r.CostUsd)}"
+        : string.Empty;
+
+    public string ReviewButtonText => Summary.Review is null ? "Analizar conversación" : "Reanalizar conversación";
+
+    public bool HasNotionLink => Summary.Notion is not null;
+
+    public string NotionLinkText => Summary.Notion is { } n ? $"Ver en Notion ({n.ExportedAt:dd/MM HH:mm})" : string.Empty;
+
+    /// <summary>Result of the last summary or Notion action.</summary>
+    public string? ActionStatus { get; private set; }
 
     private void MarkDirty([CallerMemberName] string? propertyName = null)
     {
@@ -166,6 +198,125 @@ public partial class ChatWindow : Window, INotifyPropertyChanged
         _dirty = false; // La sesión ya no existe: no pedir guardar al cerrar.
         _onChanged();
         Close();
+    }
+
+    private async void Summarize_Click(object sender, RoutedEventArgs e)
+    {
+        if (_actions is null)
+        {
+            return;
+        }
+
+        if (!_actions.CanSummarize)
+        {
+            SetActionStatus("Guarda tu clave de OpenAI en Configuración › «Transcripción…» para generar resúmenes.");
+            return;
+        }
+
+        if (HasCallSummary && System.Windows.MessageBox.Show(
+                this,
+                "Se generará un resumen nuevo con OpenAI y reemplazará el actual. ¿Continuar?",
+                "Regenerar resumen",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question) != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        await RunActionAsync("Generando el resumen con OpenAI…", () => _actions.SummarizeSessionAsync(Summary.Id));
+    }
+
+    private async void Review_Click(object sender, RoutedEventArgs e)
+    {
+        if (_actions is null)
+        {
+            return;
+        }
+
+        if (!_actions.CanSummarize)
+        {
+            SetActionStatus("Guarda tu clave de OpenAI en Configuración › «Transcripción…» para analizar la conversación.");
+            return;
+        }
+
+        if (Summary.Review is not null && System.Windows.MessageBox.Show(
+                this,
+                "Se generará un análisis nuevo con OpenAI y reemplazará el actual. ¿Continuar?",
+                "Reanalizar conversación",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question) != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        await RunActionAsync("Analizando la conversación con OpenAI…", () => _actions.ReviewSessionAsync(Summary.Id));
+    }
+
+    private async void UploadNotion_Click(object sender, RoutedEventArgs e)
+    {
+        if (_actions is null)
+        {
+            return;
+        }
+
+        if (!_actions.IsNotionReady)
+        {
+            SetActionStatus("Configura Notion en Configuración › «Notion…» (token y base de datos).");
+            return;
+        }
+
+        await RunActionAsync("Subiendo a Notion…", () => _actions.ExportSessionToNotionAsync(Summary.Id));
+    }
+
+    /// <summary>
+    /// Saves pending edits (the summary and Notion use the saved title, tags and notes),
+    /// runs the action and refreshes the summary and Notion link from the store.
+    /// </summary>
+    private async Task RunActionAsync(string progressText, Func<Task<bool>> action)
+    {
+        if (_dirty && !SaveChanges())
+        {
+            return;
+        }
+
+        SummaryButton.IsEnabled = ReviewButton.IsEnabled = NotionButton.IsEnabled = false;
+        SetActionStatus(progressText);
+        try
+        {
+            await action();
+            SetActionStatus(_actions?.StatusText);
+            if (_store.GetSession(Summary.Id) is ({ } fresh, _))
+            {
+                Summary = Summary with { CallSummary = fresh.CallSummary, Notion = fresh.Notion, Review = fresh.Review };
+                foreach (var name in new[]
+                {
+                    nameof(HasCallSummary), nameof(CallSummaryText), nameof(CallSummaryInfo), nameof(SummaryButtonText),
+                    nameof(ShowReview), nameof(ReviewText), nameof(ReviewInfo), nameof(ReviewButtonText),
+                    nameof(HasNotionLink), nameof(NotionLinkText),
+                })
+                {
+                    OnPropertyChanged(name);
+                }
+            }
+        }
+        finally
+        {
+            SummaryButton.IsEnabled = ReviewButton.IsEnabled = NotionButton.IsEnabled = true;
+        }
+    }
+
+    private void SetActionStatus(string? text)
+    {
+        ActionStatus = text;
+        OnPropertyChanged(nameof(ActionStatus));
+    }
+
+    private void OpenNotion_Click(object sender, RoutedEventArgs e)
+    {
+        if (Summary.Notion?.Url is { } url && Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps)
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+        }
     }
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();

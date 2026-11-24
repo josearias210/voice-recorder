@@ -793,6 +793,7 @@ public sealed class MainViewModel : ViewModelBase
         var clock = new System.Diagnostics.Stopwatch();
         var (mic, call) = FindRecordings(fileStore.GetSessionFolder(sessionId));
         var audio = AudioDuration(mic, call);
+        var transcribed = false;
         try
         {
             Segments.Clear();
@@ -808,7 +809,7 @@ public sealed class MainViewModel : ViewModelBase
             RecordRun(run);
             StatusText = $"Transcripción guardada: {segments.Count} segmentos · {CostFormat.Summary(run)}.";
             LoadHistory(SearchText);
-            SessionImported?.Invoke(sessionId);
+            transcribed = true;
         }
         catch (OperationCanceledException)
         {
@@ -828,6 +829,258 @@ public sealed class MainViewModel : ViewModelBase
             Interlocked.Exchange(ref _importGuard, 0);
             OnPropertyChanged(nameof(CanStart));
             CommandManager.InvalidateRequerySuggested();
+        }
+
+        if (transcribed)
+        {
+            await AfterTranscriptionAsync(sessionId, askNotion: true);
+            SessionImported?.Invoke(sessionId);
+        }
+    }
+
+    /// <summary>
+    /// Asks the user a yes/no question (title, message). Without a UI (tests) nothing
+    /// is confirmed, so nothing leaves the computer.
+    /// </summary>
+    public Func<string, string, bool>? Confirm { get; set; }
+
+    /// <summary>Indicates whether summaries can be generated (an OpenAI key is saved).</summary>
+    public bool CanSummarize => _settings?.HasOpenAiKey == true;
+
+    /// <summary>Indicates whether Notion is configured (enabled, database and token).</summary>
+    public bool IsNotionReady => _settings?.IsNotionReady == true;
+
+    /// <summary>
+    /// After a transcription: generates the summary if automatic summaries are on and,
+    /// if Notion is configured, asks whether to upload the session.
+    /// </summary>
+    private async Task AfterTranscriptionAsync(long sessionId, bool askNotion)
+    {
+        if (_settings is null)
+        {
+            return;
+        }
+
+        if (_settings.AutoSummarize && CanSummarize)
+        {
+            await SummarizeSessionAsync(sessionId);
+        }
+
+        if (askNotion && _settings.IsNotionReady && _settings.NotionAskAfterTranscription
+            && _store.GetSession(sessionId) is ({ } session, var segments)
+            && Storage.Notion.NotionExporter.WhatWillBeUploaded(session, segments, _settings.NotionUploadContent) is var parts
+            && parts != Storage.Notion.NotionContent.None
+            && Confirm?.Invoke("Subir a Notion", $"¿Subir {DescribeContent(parts)} de «{session.Title}» a Notion?") == true)
+        {
+            await ExportSessionToNotionAsync(sessionId);
+        }
+    }
+
+    /// <summary>Avoids running two summaries or uploads at the same time.</summary>
+    private int _publishGuard;
+
+    /// <summary>HTTP client for summaries and Notion (a long summary can take a while).</summary>
+    private static readonly HttpClient PublishHttp = new() { Timeout = TimeSpan.FromMinutes(5) };
+
+    /// <summary>
+    /// Generates (or regenerates) the session's summary with OpenAI from its transcript.
+    /// Only the text is sent, never the audio. Returns true if it was saved.
+    /// </summary>
+    public Task<bool> SummarizeSessionAsync(long sessionId) => GenerateAsync(
+        sessionId,
+        "el resumen",
+        "Resumen guardado",
+        SummaryEngineName,
+        (summarizer, session, segments) => summarizer.SummarizeAsync(session.Title, segments, session.Notes, CancellationToken.None),
+        (store, summary) => store.SetCallSummary(sessionId, summary));
+
+    /// <summary>
+    /// Experimental: generates (or regenerates) the communication review of the session — how
+    /// «Yo» led the conversation, with criteria, strengths, failures and improvements. Never
+    /// automatic. Only the text is sent to OpenAI, never the audio. Returns true if it was saved.
+    /// </summary>
+    public Task<bool> ReviewSessionAsync(long sessionId)
+    {
+        if (_settings?.ReviewEnabled != true)
+        {
+            StatusText = "Activa el análisis de comunicación en Configuración › Experimental.";
+            return Task.FromResult(false);
+        }
+
+        return GenerateAsync(
+            sessionId,
+            "el análisis",
+            "Análisis guardado",
+            ReviewEngineName,
+            (summarizer, session, segments) => summarizer.ReviewAsync(session.Title, segments, session.Notes, CancellationToken.None),
+            (store, review) => store.SetReview(sessionId, review));
+    }
+
+    /// <summary>Indicates whether the experimental communication review is on.</summary>
+    public bool IsReviewEnabled => _settings?.ReviewEnabled == true;
+
+    /// <summary>Engine name of summaries in the costs log.</summary>
+    public const string SummaryEngineName = "OpenAI (resumen)";
+
+    /// <summary>Engine name of communication reviews in the costs log.</summary>
+    public const string ReviewEngineName = "OpenAI (análisis)";
+
+    /// <summary>Generates an AI text about the session (summary or review), saves it and logs its cost.</summary>
+    private async Task<bool> GenerateAsync(
+        long sessionId,
+        string what,
+        string savedText,
+        string engineName,
+        Func<OpenAiSummarizer, SessionSummary, IReadOnlyList<TranscriptSegment>, Task<CallSummary>> generate,
+        Func<ISessionFileStore, CallSummary, bool> save)
+    {
+        if (_store is not ISessionFileStore fileStore || _store.GetSession(sessionId) is not ({ } session, var segments))
+        {
+            return false;
+        }
+
+        if (_settings?.GetOpenAiKey() is not { Length: > 0 } key)
+        {
+            StatusText = $"Para generar {what}, guarda tu clave de OpenAI en Configuración › «Transcripción…».";
+            return false;
+        }
+
+        if (Interlocked.Exchange(ref _publishGuard, 1) == 1)
+        {
+            StatusText = "Ya hay un resumen, un análisis o una subida a Notion en curso.";
+            return false;
+        }
+
+        var startedAt = DateTime.Now;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            StatusText = $"Generando {what} de «{session.Title}» con OpenAI…";
+            var summarizer = new OpenAiSummarizer(
+                PublishHttp,
+                key,
+                _settings.SummaryModel,
+                usdPerMillionInput: _settings.SummaryUsdPerMillionInput,
+                usdPerMillionOutput: _settings.SummaryUsdPerMillionOutput);
+            var result = await generate(summarizer, session, segments);
+            clock.Stop();
+            await Task.Run(() => save(fileStore, result));
+            RecordRun(new TranscriptionRun(startedAt, engineName, result.Model, clock.Elapsed, 0, result.CostUsd, sessionId, session.Title));
+            StatusText = $"{savedText} · {CostFormat.Duration(clock.Elapsed)} · {CostFormat.Cost(result.CostUsd)}.";
+            LoadHistory(SearchText);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"No se pudo generar {what}: {ex.Message}";
+            return false;
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _publishGuard, 0);
+        }
+    }
+
+    /// <summary>"el resumen y la transcripción", "el análisis"… (with «o» instead of «y» when listing what is missing).</summary>
+    internal static string DescribeContent(Storage.Notion.NotionContent content, string conjunction = "y")
+    {
+        var parts = new List<string>();
+        if (content.HasFlag(Storage.Notion.NotionContent.Summary))
+        {
+            parts.Add("el resumen");
+        }
+
+        if (content.HasFlag(Storage.Notion.NotionContent.Review))
+        {
+            parts.Add("el análisis de comunicación");
+        }
+
+        if (content.HasFlag(Storage.Notion.NotionContent.Transcript))
+        {
+            parts.Add("la transcripción");
+        }
+
+        return parts.Count switch
+        {
+            0 => "la sesión",
+            1 => parts[0],
+            _ => $"{string.Join(", ", parts[..^1])} {conjunction} {parts[^1]}",
+        };
+    }
+
+
+    /// <summary>
+    /// Uploads the session (summary and transcript) to the configured Notion database.
+    /// If it was uploaded before, asks whether to replace that page (the old one goes to
+    /// Notion's trash). Returns true if it was uploaded.
+    /// </summary>
+    public async Task<bool> ExportSessionToNotionAsync(long sessionId)
+    {
+        if (_store is not ISessionFileStore fileStore || _store.GetSession(sessionId) is not ({ } session, var segments))
+        {
+            return false;
+        }
+
+        if (_settings is not { IsNotionReady: true } || _settings.GetNotionToken() is not { Length: > 0 } token)
+        {
+            StatusText = "Configura primero Notion en Configuración › «Notion…» (token y base de datos).";
+            return false;
+        }
+
+        var content = _settings.NotionUploadContent;
+        if (Storage.Notion.NotionExporter.WhatWillBeUploaded(session, segments, content) == Storage.Notion.NotionContent.None)
+        {
+            StatusText = content == Storage.Notion.NotionContent.None
+                ? "No hay nada marcado para subir: elige en Configuración › «Notion…» qué se sube."
+                : $"«{session.Title}» todavía no tiene {DescribeContent(content, "o")}. Genéralo o cambia en Configuración › «Notion…» qué se sube.";
+            return false;
+        }
+
+        if (session.Notion is { } previous
+            && Confirm?.Invoke(
+                "Subir a Notion",
+                $"«{session.Title}» ya se subió a Notion el {previous.ExportedAt:dd/MM/yyyy HH:mm}. "
+                + "¿Crear una página nueva? La anterior se moverá a la papelera de Notion.") != true)
+        {
+            return false;
+        }
+
+        if (Interlocked.Exchange(ref _publishGuard, 1) == 1)
+        {
+            StatusText = "Ya hay un resumen, un análisis o una subida a Notion en curso.";
+            return false;
+        }
+
+        try
+        {
+            StatusText = $"Subiendo «{session.Title}» a Notion…";
+            var exporter = new Storage.Notion.NotionExporter(PublishHttp, token, _settings.NotionDatabaseId!);
+            var export = await exporter.ExportAsync(session, segments, content, CancellationToken.None);
+            await Task.Run(() => fileStore.SetNotionExport(sessionId, export));
+            if (session.Notion is { } old)
+            {
+                try
+                {
+                    await exporter.ArchivePageAsync(old.PageId, CancellationToken.None);
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or HttpRequestException)
+                {
+                    // The new page is already up; the old one can be deleted by hand.
+                }
+            }
+
+            StatusText = $"Subida a Notion: {export.Url}";
+            LoadHistory(SearchText);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"No se pudo subir a Notion: {ex.Message}";
+            return false;
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _publishGuard, 0);
         }
     }
 
@@ -1132,6 +1385,10 @@ public sealed class MainViewModel : ViewModelBase
                     StatusText = vadError.Length == 0
                         ? $"{prefix}{name}: guardada · {segments.Count} segmentos · {CostFormat.Summary(run)}."
                         : $"{prefix}{name}: guardada · {segments.Count} segmentos · {CostFormat.Summary(run)} (VAD por energía).";
+
+                    // With several files, only the automatic summary runs: asking about Notion
+                    // for each one would interrupt the batch (each session can be uploaded later).
+                    await AfterTranscriptionAsync(savedId, askNotion: files.Count == 1);
                     if (files.Count == 1)
                     {
                         SessionImported?.Invoke(savedId);
