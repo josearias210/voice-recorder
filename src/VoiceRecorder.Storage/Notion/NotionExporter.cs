@@ -112,7 +112,7 @@ public sealed partial class NotionExporter
         var title = string.Concat((root["title"] as JsonArray ?? [])
             .Select(t => t?["plain_text"]?.GetValue<string>() ?? string.Empty));
         var properties = (root["properties"] as JsonObject ?? [])
-            .Select(p => (Name: (string?)p.Key, Type: p.Value?["type"]?.GetValue<string>() ?? string.Empty))
+            .Select(p => (Name: p.Key, Type: p.Value?["type"]?.GetValue<string>() ?? string.Empty))
             .ToList();
 
         var titleProperty = properties.FirstOrDefault(p => p.Type == "title").Name
