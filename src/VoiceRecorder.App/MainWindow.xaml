@@ -4,7 +4,7 @@
         Title="{Binding WindowTitle, Mode=OneWay, FallbackValue='Voice Recorder · Transcriptor de llamadas'}"
         Height="760" Width="1200" MinHeight="580" MinWidth="960"
         WindowStartupLocation="CenterScreen"
-        AllowDrop="True" DragOver="Window_DragOver" Drop="Window_Drop"
+        AllowDrop="True" DragOver="Window_DragOver" Drop="Window_Drop" PreviewKeyDown="Window_PreviewKeyDown"
         Background="{DynamicResource WindowBackground}"
         Foreground="{DynamicResource TextBrush}"
         FontFamily="{StaticResource AppFont}"
@@ -65,12 +65,6 @@
             </Style.Triggers>
         </Style>
 
-        <Style x:Key="FieldLabel" TargetType="TextBlock">
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
-            <Setter Property="Margin" Value="0,0,8,0" />
-        </Style>
-
         <Style x:Key="EmptyTitle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="15" />
             <Setter Property="FontWeight" Value="SemiBold" />
@@ -103,7 +97,6 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
@@ -188,6 +181,15 @@
                     <Button Content="Transcribir archivo…" Tag="&#xE8E5;" Command="{Binding TranscribeFileCommand}"
                             Padding="14,9" Style="{StaticResource SecondaryButton}"
                             ToolTip="Transcribe un archivo de audio o vídeo. También puedes arrastrarlo a la ventana." />
+                    <Button x:Name="HistoryButton" Content="Historial" Tag="&#xE81C;" Click="HistoryToggle_Click"
+                            Margin="8,0,0,0" Padding="14,9" Style="{StaticResource SecondaryButton}"
+                            ToolTip="Muestra u oculta el historial de sesiones (Ctrl+H)" />
+                    <Button Click="Settings_Click" Margin="8,0,0,0" Padding="11,9" Style="{StaticResource SecondaryButton}"
+                            AutomationProperties.Name="Configuración"
+                            ToolTip="Configuración: micrófono, modelo, idioma, motores, costes, backup, tema y acerca de">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE713;" FontSize="16"
+                                   Foreground="{DynamicResource AccentTextBrush}" />
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
@@ -196,7 +198,7 @@
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="380" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <!-- Transcripción -->
@@ -305,8 +307,9 @@
                 </Grid>
             </Border>
 
-            <!-- Historial -->
-            <Border Grid.Column="1" Style="{StaticResource Card}" Padding="14" Margin="12,0,0,0">
+            <!-- Historial: panel lateral, oculto hasta que se pulsa «Historial» -->
+            <Border x:Name="HistoryPanel" Grid.Column="1" Style="{StaticResource Card}" Padding="14" Margin="12,0,0,0"
+                    Width="380" Visibility="Collapsed">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -314,11 +317,17 @@
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="2,0,0,10">
-                        <TextBlock Style="{StaticResource Icon}" Text="&#xE81C;" Foreground="{DynamicResource MutedBrush}"
-                                   Margin="0,0,8,0" />
-                        <TextBlock Text="Historial de sesiones" Style="{StaticResource SectionTitle}" />
-                    </StackPanel>
+                    <DockPanel Grid.Row="0" Margin="2,0,0,10">
+                        <Button DockPanel.Dock="Right" Click="HistoryToggle_Click" Style="{StaticResource GhostButton}"
+                                Padding="6,4" AutomationProperties.Name="Cerrar historial" ToolTip="Cerrar el historial">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE711;" FontSize="12" />
+                        </Button>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE81C;" Foreground="{DynamicResource MutedBrush}"
+                                       Margin="0,0,8,0" />
+                            <TextBlock Text="Historial de sesiones" Style="{StaticResource SectionTitle}" />
+                        </StackPanel>
+                    </DockPanel>
                     <DockPanel Grid.Row="1" Margin="0,0,0,10">
                         <Button DockPanel.Dock="Right" Content="Buscar" Tag="&#xE721;" Command="{Binding SearchCommand}"
                                 Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" />
@@ -425,72 +434,18 @@
                                     ToolTip="Abre la carpeta de la sesión seleccionada (transcripción y audio), o la carpeta de sesiones" />
                             <Button Content="Eliminar" Tag="&#xE74D;" Style="{StaticResource SecondaryButton}" Margin="0,0,8,8"
                                     Click="DeleteSession_Click" />
-                            <Button Content="Sincronizar…" Tag="&#xE895;" Style="{StaticResource SecondaryButton}" Margin="0,0,8,8"
-                                    Click="SyncBackup_Click"
-                                    ToolTip="Compara lo que hay en local con el backup externo (falta subir, falta bajar, distinto, sincronizado) y sube o baja a mano" />
-                            <Button Content="Costes…" Tag="&#xE8C7;" Style="{StaticResource SecondaryButton}" Margin="0,0,8,8"
-                                    Click="Costs_Click"
-                                    ToolTip="Cuánto has gastado en transcripciones por mes, y el tiempo y coste de cada una" />
                         </WrapPanel>
                     </StackPanel>
                 </Grid>
             </Border>
         </Grid>
 
-        <!-- Ajustes -->
-        <Border Grid.Row="3" Style="{StaticResource Card}" Padding="16,10" Margin="0,12,0,0">
-            <WrapPanel Orientation="Horizontal">
-                <StackPanel Orientation="Horizontal" Margin="0,3,20,3">
-                    <TextBlock Text="Modelo" Style="{StaticResource FieldLabel}" />
-                    <ComboBox ItemsSource="{Binding ModelOptions}" SelectedItem="{Binding SelectedModel}" DisplayMemberPath="DisplayName"
-                              IsEnabled="{Binding CanStart}" MinWidth="170" Margin="0,0,6,0" VerticalContentAlignment="Center"
-                              SelectionChanged="Model_SelectionChanged" />
-                    <Button Content="{Binding DownloadButtonText}" Command="{Binding DownloadModelCommand}" Tag="&#xE896;"
-                            Style="{StaticResource SecondaryButton}" MinWidth="110"
-                            ToolTip="Descarga el modelo seleccionado a tu PC (una sola vez; después funciona sin internet)" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,3,20,3">
-                    <TextBlock Text="Idioma" Style="{StaticResource FieldLabel}" />
-                    <ComboBox ItemsSource="{Binding LanguageOptions}" SelectedValuePath="Code" SelectedValue="{Binding SelectedLanguageCode}"
-                              IsEnabled="{Binding CanStart}" DisplayMemberPath="Name" MinWidth="150" VerticalContentAlignment="Center" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,3,20,3">
-                    <TextBlock Text="Micrófono" Style="{StaticResource FieldLabel}" />
-                    <ComboBox ItemsSource="{Binding MicrophoneOptions}" SelectedItem="{Binding SelectedMicrophone}" IsEnabled="{Binding CanStart}"
-                              DisplayMemberPath="Name" MinWidth="230" MaxWidth="280" VerticalContentAlignment="Center" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,3,20,3">
-                    <TextBlock Text="Tema" Style="{StaticResource FieldLabel}" />
-                    <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedValue="{Binding SelectedTheme}" SelectedValuePath="Theme"
-                              DisplayMemberPath="Name" MinWidth="110" VerticalContentAlignment="Center" />
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" Margin="0,3,0,3">
-                    <Button Content="Transcripción…" Tag="&#xE713;" Click="TranscriptionSettings_Click" Style="{StaticResource SecondaryButton}"
-                            ToolTip="Motor de transcripción por defecto (Whisper local u OpenAI) y clave de la API de OpenAI" />
-                    <Button Content="Backup externo…" Tag="&#xE753;" Click="Backup_Click" Style="{StaticResource SecondaryButton}"
-                            Margin="8,0,0,0" ToolTip="Copia de las sesiones en Azure Blob Storage (con la misma estructura que en local)" />
-                </StackPanel>
-            </WrapPanel>
-        </Border>
-
         <!-- Estado -->
-        <DockPanel Grid.Row="4" Margin="4,10,0,0">
+        <DockPanel Grid.Row="3" Margin="4,10,0,0">
             <Button DockPanel.Dock="Right" Content="Cancelar" Tag="&#xE711;" Command="{Binding CancelImportCommand}"
                     Style="{StaticResource SecondaryButton}" Padding="12,4" Margin="12,0,0,0"
                     VerticalAlignment="Center"
                     Visibility="{Binding IsImporting, Converter={StaticResource BoolToVis}}" />
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-                <TextBlock Text="{Binding VersionText, Mode=OneWay}" FontSize="12" VerticalAlignment="Center"
-                           Foreground="{DynamicResource MutedBrush}" Margin="0,0,6,0"
-                           ToolTip="Versión de Voice Recorder" />
-                <Button Content="Buscar actualizaciones" Tag="&#xE72C;" Command="{Binding CheckForUpdatesCommand}"
-                        Style="{StaticResource GhostButton}"
-                        ToolTip="Comprueba ahora si hay una versión nueva en GitHub Releases" />
-                <Button Content="Aviso legal" Tag="&#xE8A5;" Click="LegalNotice_Click" Style="{StaticResource GhostButton}"
-                        ToolTip="Exención de responsabilidad y condiciones de uso (DISCLAIMER.md)" />
-                <Button Content="Privacidad" Tag="&#xE72E;" Click="Privacy_Click" Style="{StaticResource GhostButton}"
-                        ToolTip="Qué datos se guardan y cuándo se usa la red (PRIVACY.md)" />
-            </StackPanel>
             <StackPanel VerticalAlignment="Center">
                 <ProgressBar Height="4" Minimum="0" Maximum="1" Value="{Binding DownloadPercent, Mode=OneWay}"
                              Visibility="{Binding DownloadVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,5" />

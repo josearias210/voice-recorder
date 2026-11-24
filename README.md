@@ -23,8 +23,8 @@ Meet · Teams · Zoom · WhatsApp Web · Discord — si suena en tu PC, se trans
 - 🔌 **Universal**: captura el audio a nivel de sistema (WASAPI Loopback + micrófono). No depende de Meet, Teams, Zoom ni de ninguna app concreta.
 - 👥 **¿Quién dijo qué?**: burbujas `Yo` / `Ellos` separadas por detección de voz (VAD Silero) en cada canal.
 - 🔒 **Local por defecto**: transcripción con Whisper (whisper.cpp) en tu máquina. Nada sale de tu PC salvo que elijas OpenAI o el backup opcional.
-- 🧠 **Dos motores**: Whisper local (gratis) u OpenAI `gpt-transcribe` (de pago, con tu clave). Eliges el motor por defecto en **Transcripción…** y puedes cambiarlo cada vez que transcribes.
-- 🔁 **Transcribe cuando quieras y regenera**: al detener la grabación la app pregunta si transcribir ahora; desde el historial, **Transcribir…** vuelve a transcribir el audio guardado con el motor que elijas.
+- 🧠 **Dos motores**: Whisper local (gratis) u OpenAI `gpt-transcribe` (de pago, con tu clave). Eliges el motor por defecto en **Configuración › Transcripción…** y puedes cambiarlo cada vez que transcribes.
+- 🔁 **Transcribe cuando quieras y regenera**: al detener la grabación la app pregunta si transcribir ahora; desde el historial (botón **Historial**), **Transcribir…** vuelve a transcribir el audio guardado con el motor que elijas.
 - ⏸ **Pausar y reanudar**: el cronómetro de sesión excluye las pausas.
 - 💾 **Historial con etiquetas**: sesiones guardadas como carpetas (`Sesiones/AAAA/MM/…`), reabribles como vista de chat, con backup manual opcional en tu Azure Blob Storage.
 - 📤 **Exportar**: TXT, Markdown y SRT (subtítulos).
@@ -40,7 +40,7 @@ Meet · Teams · Zoom · WhatsApp Web · Discord — si suena en tu PC, se trans
 
 Descarga `VoiceRecorder-win-Setup.exe` desde [Releases](../../releases/latest) y ejecútalo.
 
-La app **se actualiza sola**: al arrancar comprueba si hay una versión nueva y te ofrece *Actualizar y reiniciar* (descarga incremental, sin reinstalar). También puedes pulsar **Buscar actualizaciones** en la barra inferior, donde se muestra la versión instalada (por ejemplo, `v1.3.0 · instalada`).
+La app **se actualiza sola**: al arrancar comprueba si hay una versión nueva y te ofrece *Actualizar y reiniciar* (descarga incremental, sin reinstalar). También puedes pulsar **Buscar actualizaciones** en **Configuración** (⚙, arriba a la derecha), donde se muestra la versión instalada (por ejemplo, `v1.3.0 · instalada`).
 
 > Requiere **Windows 10 2004+ / Windows 11** (64 bits). El modelo de transcripción se descarga dentro de la app (≈60 MB).
 
@@ -73,10 +73,10 @@ Requisitos: [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0) y W
 
 ## 📖 Uso
 
-1. Entra a tu llamada (Meet, Teams, Zoom, …) y pulsa **Iniciar**. Arranca al instante y graba dos WAV: `grabacion-<fecha>-micro.wav` (tu voz) y `grabacion-<fecha>-llamada.wav` (la otra persona).
+1. Elige tu micrófono, el modelo y el idioma en **Configuración** (⚙, arriba a la derecha; solo la primera vez). Entra a tu llamada (Meet, Teams, Zoom, …) y pulsa **Iniciar**. Arranca al instante y graba dos WAV: `grabacion-<fecha>-micro.wav` (tu voz) y `grabacion-<fecha>-llamada.wav` (la otra persona).
 2. **Pausar** si necesitas un descanso · **Detener** para guardar la sesión con su audio.
 3. Al detener, la app pregunta si quieres **transcribir ahora** y con qué motor (propone el de por defecto). Si eliges *Más tarde*, la sesión queda «sin transcribir».
-4. En el **Historial**, **Transcribir…** transcribe la sesión seleccionada o **regenera** su transcripción (por ejemplo, con otro motor o modelo). La transcripción anterior se reemplaza solo cuando termina la nueva.
+4. Pulsa **Historial** (arriba a la derecha, o `Ctrl+H`) para abrir el panel de sesiones; allí **Transcribir…** transcribe la sesión seleccionada o **regenera** su transcripción (por ejemplo, con otro motor o modelo). La transcripción anterior se reemplaza solo cuando termina la nueva.
 5. Abre la sesión para verla como chat (`Yo` a la derecha, `Ellos` a la izquierda), editar título y etiquetas o **exportar** (TXT/MD/SRT).
 
 El audio ocupa unos 115 MB por hora y canal. El botón **Carpeta** del historial abre la carpeta de la sesión, y al eliminar la sesión se borra también su audio.
@@ -85,18 +85,18 @@ El audio ocupa unos 115 MB por hora y canal. El botón **Carpeta** del historial
 
 ### Motores de transcripción
 
-En **Transcripción…** (barra de ajustes) eliges el motor por defecto:
+En **Configuración › Transcripción…** eliges el motor por defecto:
 
 | Motor | Dónde se ejecuta | Coste | Notas |
 |-------|------------------|-------|-------|
-| **Whisper local** (por defecto) | En tu equipo | Gratis | Modelo e idioma en la barra de ajustes. Con Large v3 Turbo es muy preciso, pero tarda más en CPU. |
+| **Whisper local** (por defecto) | En tu equipo | Gratis | Modelo e idioma en **Configuración**. Con Large v3 Turbo es muy preciso, pero tarda más en CPU. |
 | **OpenAI** (`gpt-transcribe`) | En la nube de OpenAI | ≈ 0,0045 USD por minuto de voz | Necesita tu clave de la API (se guarda cifrada con DPAPI). *Probar clave* la comprueba sin enviar audio. |
 
 Con OpenAI, la detección de voz sigue siendo local: solo se envían los tramos con voz, en bloques de hasta 28 s y cada uno con su canal. Así se conservan `Yo`/`Ellos` y las marcas de tiempo, que `gpt-transcribe` no devuelve. Al terminar, la barra de estado muestra el tiempo que tardó y el coste estimado.
 
 ### Costes
 
-**Costes…** (bajo el historial) muestra cuánto llevas gastado este mes, el total y el tiempo dedicado a transcribir, con el detalle de cada transcripción: fecha, sesión, motor y modelo, minutos de audio, tiempo y coste. Cada sesión del historial muestra además su última transcripción, por ejemplo `OpenAI · 3 min 20 s · ≈ 0,0140 USD`.
+**Costes…** (en **Configuración**) muestra cuánto llevas gastado este mes, el total y el tiempo dedicado a transcribir, con el detalle de cada transcripción: fecha, sesión, motor y modelo, minutos de audio, tiempo y coste. Cada sesión del historial muestra además su última transcripción, por ejemplo `OpenAI · 3 min 20 s · ≈ 0,0140 USD`.
 
 - **Whisper local** cuesta 0: solo se registra el tiempo.
 - **OpenAI**: coste estimado = minutos de voz enviados × precio por minuto. El precio (0,0045 USD por defecto) se puede ajustar en **Transcripción…**. Si una transcripción falla o se cancela a medias, lo ya enviado también se registra, porque OpenAI lo cobra igual. El importe real es el de tu panel de OpenAI (botón *Ver uso real en OpenAI*).
@@ -119,7 +119,7 @@ Arrastra uno o varios archivos a la ventana, o pulsa **Transcribir archivo…**.
 | Small (Q5) | ~180 MB | Más preciso |
 | Large v3 Turbo (Q5) | ~575 MB | Máxima precisión; en CPU tarda bastante más |
 
-Los modelos se almacenan en `%LOCALAPPDATA%\VoiceRecorder\models`.
+Se eligen y descargan en **Configuración**. Los modelos se almacenan en `%LOCALAPPDATA%\VoiceRecorder\models`.
 
 Whisper trabaja en modo preciso: junta las frases cercanas en bloques de hasta 28 s, usa el texto anterior como contexto y compara varias alternativas (búsqueda por haz). Así comete bastantes menos errores que con frases sueltas.
 
@@ -137,9 +137,9 @@ Cada sesión es una carpeta, sin base de datos:
 
 Si venías de una versión anterior, la antigua `sessions.db` se migra automáticamente al arrancar (se renombra a `sessions.db.migrated`, no se borra).
 
-**Backup externo (Azure Blob Storage)**: por defecto todo se queda en local. En **Backup externo…** (barra de ajustes) activa *Usar backup en Azure Blob Storage* e indica la cuenta de almacenamiento, el contenedor (se crea si no existe; por defecto `voice-recorder`) y la *access key* de la cuenta (o una cadena de conexión). La clave se guarda cifrada con DPAPI para tu usuario de Windows.
+**Backup externo (Azure Blob Storage)**: por defecto todo se queda en local. En **Configuración › Backup externo…** activa *Usar backup en Azure Blob Storage* e indica la cuenta de almacenamiento, el contenedor (se crea si no existe; por defecto `voice-recorder`) y la *access key* de la cuenta (o una cadena de conexión). La clave se guarda cifrada con DPAPI para tu usuario de Windows.
 
-El backup es **siempre manual**: la app nunca sube ni baja nada por su cuenta. Pulsa **Sincronizar…** (bajo el historial) y verás la comparación entre local y la nube, archivo por archivo (MD5):
+El backup es **siempre manual**: la app nunca sube ni baja nada por su cuenta. Pulsa **Sincronizar…** (en **Configuración**) y verás la comparación entre local y la nube, archivo por archivo (MD5):
 
 - **Sincronizado al N %** y cuatro contadores: ✓ sincronizados (iguales en ambos lados), ⬆ en local y no arriba (falta subir), ⬇ arriba y no en local (falta bajar) y ≠ en ambos con contenido distinto.
 - La lista de sesiones con el estado de cada una (filtrable); pasando el ratón se ve el estado de cada archivo.
