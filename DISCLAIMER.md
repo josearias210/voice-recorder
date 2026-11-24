@@ -1,6 +1,6 @@
 # ⚠️ Aviso legal y exención de responsabilidad — Voice Recorder
 
-> Última actualización: 2026-11-23 · Aplica a partir de la versión 1.4.0
+> Última actualización: 2026-11-24 · Aplica a partir de la versión 1.6.0
 
 ## 0. Aceptación
 

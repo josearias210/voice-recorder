@@ -29,7 +29,7 @@ Meet · Teams · Zoom · WhatsApp Web · Discord — si suena en tu PC, se trans
 - 💾 **Historial con etiquetas**: sesiones guardadas como carpetas (`Sesiones/AAAA/MM/…`), reabribles como vista de chat, con backup manual opcional en tu Azure Blob Storage.
 - 📤 **Exportar**: TXT, Markdown y SRT (subtítulos).
 - **Transcribir archivos**: importa audio o vídeo (mp3, wav, m4a, mp4, mkv, mov, …) arrastrándolos a la ventana o con el botón *Transcribir archivo*; cada archivo se guarda como una sesión del historial.
-- 🖥️ **Bandeja del sistema**: control Iniciar/Pausar/Detener sin abrir la ventana.
+- 🖥️ **Bandeja del sistema**: control Iniciar/Pausar/Detener sin abrir la ventana, y accesos a Historial y Configuración.
 - 🔄 **Auto-actualización**: con deltas incrementales vía [Velopack](https://github.com/velopack/velopack).
 - 🎚️ **Audio por canal**: cada sesión guarda dos WAV, el del micrófono (tu voz, `Yo`) y el de la llamada (la otra persona, `Ellos`).
 - 📝 **Notas de la sesión**: añade notas libres en el chat de cada sesión y guárdalas con título y etiquetas.
@@ -73,13 +73,15 @@ Requisitos: [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0) y W
 
 ## 📖 Uso
 
-1. Elige tu micrófono, el modelo y el idioma en **Configuración** (⚙, arriba a la derecha; solo la primera vez). Entra a tu llamada (Meet, Teams, Zoom, …) y pulsa **Iniciar**. Arranca al instante y graba dos WAV: `grabacion-<fecha>-micro.wav` (tu voz) y `grabacion-<fecha>-llamada.wav` (la otra persona).
+1. Elige tu micrófono, el modelo y el idioma en **Configuración** (⚙, arriba a la derecha; solo la primera vez). Si falta el micrófono o el modelo, la pantalla principal te lo avisa, y la barra inferior resume con qué vas a grabar (micrófono · modelo · idioma · motor). Entra a tu llamada (Meet, Teams, Zoom, …) y pulsa **Iniciar**. Arranca al instante y graba dos WAV: `grabacion-<fecha>-micro.wav` (tu voz) y `grabacion-<fecha>-llamada.wav` (la otra persona).
 2. **Pausar** si necesitas un descanso · **Detener** para guardar la sesión con su audio.
 3. Al detener, la app pregunta si quieres **transcribir ahora** y con qué motor (propone el de por defecto). Si eliges *Más tarde*, la sesión queda «sin transcribir».
 4. Pulsa **Historial** (arriba a la derecha, o `Ctrl+H`) para abrir el panel de sesiones; allí **Transcribir…** transcribe la sesión seleccionada o **regenera** su transcripción (por ejemplo, con otro motor o modelo). La transcripción anterior se reemplaza solo cuando termina la nueva.
 5. Abre la sesión para verla como chat (`Yo` a la derecha, `Ellos` a la izquierda), editar título y etiquetas o **exportar** (TXT/MD/SRT).
 
 El audio ocupa unos 115 MB por hora y canal. El botón **Carpeta** del historial abre la carpeta de la sesión, y al eliminar la sesión se borra también su audio.
+
+La ventana recuerda su tamaño, su posición y si el historial estaba abierto. Configuración no bloquea la ventana principal: puedes dejarla abierta mientras grabas.
 
 > 💡 **Consejo**: usa auriculares. Con altavoces, tu micrófono capta la voz remota y pueden aparecer burbujas `Yo` duplicadas.
 

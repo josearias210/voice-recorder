@@ -1,6 +1,6 @@
 # 🔒 Política de privacidad — Voice Recorder
 
-> Última actualización: 2026-11-23 · Aplica a partir de la versión 1.4.0
+> Última actualización: 2026-11-24 · Aplica a partir de la versión 1.6.0
 
 **En una frase:** Voice Recorder graba y guarda el audio **en tu equipo** y por defecto también lo transcribe ahí; el audio y el texto solo salen de tu disco cuando tú eliges transcribir con OpenAI o hacer un backup a tu propia cuenta de Azure.
 
@@ -18,7 +18,7 @@ Todo se almacena localmente en tu perfil de usuario (`%LOCALAPPDATA%\VoiceRecord
 | Ruta | Contenido | Cuándo |
 |------|-----------|--------|
 | `Sesiones\AAAA\MM\<fecha>-<id>\` | Una carpeta por sesión: `session.json` (título, fecha, duración, etiquetas, notas y los **textos** transcritos con sus marcas de tiempo) y sus WAV (micrófono y llamada). | Al pulsar *Detener* o al importar archivos. La transcripción se añade o se reemplaza cuando transcribes. (La antigua `sessions.db` se migra una vez y se renombra a `sessions.db.migrated`.) |
-| `settings.json` | Preferencias: modelo, idioma, micrófono seleccionado, motor de transcripción por defecto, la versión del aviso legal que aceptaste y, si los configuras, la clave de OpenAI y el backup externo (cuenta y contenedor). Las claves se guardan **cifradas con DPAPI** para tu usuario de Windows. | Siempre que cambias un ajuste o aceptas el aviso. |
+| `settings.json` | Preferencias: modelo, idioma, micrófono seleccionado, motor de transcripción por defecto, la versión del aviso legal que aceptaste, el tamaño y la posición de la ventana, si el historial estaba abierto y, si los configuras, la clave de OpenAI y el backup externo (cuenta y contenedor). Las claves se guardan **cifradas con DPAPI** para tu usuario de Windows. | Siempre que cambias un ajuste, cierras la ventana o aceptas el aviso. |
 | `models\` | Los modelos de transcripción y VAD que descargues. | Al descargarlos desde la app. |
 | `transcripciones.jsonl` | Registro de cada transcripción: fecha, sesión, motor y modelo, tiempo que tardó, minutos de audio y coste estimado (para «Costes…»). No contiene audio ni texto transcrito. | Cada vez que transcribes. |
 | `audio\` | WAV temporales del micrófono y de la llamada mientras se graba. | Durante cada grabación. Al guardar la sesión se mueven a su carpeta en `Sesiones\` y sus rutas quedan en las notas. |

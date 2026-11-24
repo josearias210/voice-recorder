@@ -100,21 +100,39 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Banner de actualización -->
-        <Border Grid.Row="0" Background="{DynamicResource AccentBrush}" CornerRadius="12" Padding="16,10"
-                Margin="0,0,0,12" Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolToVis}}">
-            <DockPanel>
-                <Button DockPanel.Dock="Right" Content="Actualizar y reiniciar" Padding="12,6" Tag="&#xE777;"
-                        Background="White" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"
-                        Command="{Binding UpdateNowCommand}" />
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Style="{StaticResource Icon}" Text="&#xE895;" Foreground="White" FontSize="16" Margin="0,0,10,0" />
-                    <TextBlock Foreground="White" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="13">
-                        <Run Text="Nueva versión " /><Run Text="{Binding UpdateVersion, Mode=OneWay}" /><Run Text=" disponible" />
-                    </TextBlock>
-                </StackPanel>
-            </DockPanel>
-        </Border>
+        <StackPanel Grid.Row="0">
+            <!-- Aviso de configuración pendiente (sin micrófono o sin modelo descargado) -->
+            <Border Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"
+                    CornerRadius="12" Padding="16,8" Margin="0,0,0,12"
+                    Visibility="{Binding HasSetupHint, Converter={StaticResource BoolToVis}}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="Abrir configuración" Tag="&#xE713;" Click="Settings_Click"
+                            Style="{StaticResource SecondaryButton}" Padding="12,5" Margin="12,0,0,0" />
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE7BA;" Foreground="{DynamicResource WarningBrush}"
+                                   FontSize="16" Margin="0,0,10,0" />
+                        <TextBlock Text="{Binding SetupHint}" VerticalAlignment="Center" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextBrush}" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- Banner de actualización -->
+            <Border Background="{DynamicResource AccentBrush}" CornerRadius="12" Padding="16,10"
+                    Margin="0,0,0,12" Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolToVis}}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="Actualizar y reiniciar" Padding="12,6" Tag="&#xE777;"
+                            Background="White" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"
+                            Command="{Binding UpdateNowCommand}" />
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE895;" Foreground="White" FontSize="16" Margin="0,0,10,0" />
+                        <TextBlock Foreground="White" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="13">
+                            <Run Text="Nueva versión " /><Run Text="{Binding UpdateVersion, Mode=OneWay}" /><Run Text=" disponible" />
+                        </TextBlock>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </StackPanel>
 
         <!-- Cabecera: marca, estado con cronómetro y controles de la sesión -->
         <Border Grid.Row="1" BorderThickness="1" CornerRadius="12" Padding="16,12" Margin="0,0,0,12">
@@ -446,6 +464,11 @@
                     Style="{StaticResource SecondaryButton}" Padding="12,4" Margin="12,0,0,0"
                     VerticalAlignment="Center"
                     Visibility="{Binding IsImporting, Converter={StaticResource BoolToVis}}" />
+            <Button DockPanel.Dock="Right" Click="Settings_Click" Style="{StaticResource GhostButton}" Tag="&#xE720;"
+                    Margin="12,0,0,0" VerticalAlignment="Center"
+                    ToolTip="Micrófono, modelo, idioma y motor por defecto con los que vas a grabar y transcribir. Pulsa para cambiarlos.">
+                <TextBlock Text="{Binding ConfigSummary}" TextTrimming="CharacterEllipsis" MaxWidth="420" />
+            </Button>
             <StackPanel VerticalAlignment="Center">
                 <ProgressBar Height="4" Minimum="0" Maximum="1" Value="{Binding DownloadPercent, Mode=OneWay}"
                              Visibility="{Binding DownloadVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,5" />

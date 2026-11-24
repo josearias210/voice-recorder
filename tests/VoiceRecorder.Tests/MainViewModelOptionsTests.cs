@@ -110,6 +110,54 @@ public class MainViewModelOptionsTests : IDisposable
         Assert.Equal("ggml-tiny-q5_1.bin", reloaded.ModelFileName);
     }
 
+    [Fact]
+    public void Sin_Microfono_Avisa_En_La_Pantalla_Principal()
+    {
+        Assert.True(_viewModel.HasSetupHint);
+        Assert.Contains("micrófono", _viewModel.SetupHint);
+        Assert.StartsWith("Sin micrófono · ", _viewModel.ConfigSummary);
+    }
+
+    [Fact]
+    public void Con_Microfono_Avisa_Si_Falta_El_Modelo_Y_Resume_La_Configuracion()
+    {
+        var devices = new EmptyDevices(new AudioDeviceInfo("mic-usb", "USB Audio", AudioDeviceKind.Microphone));
+        var viewModel = new MainViewModel(new EmptyStore(), new ModelManager(_modelsDir), devices);
+
+        Assert.True(viewModel.HasSetupHint);
+        Assert.Contains(viewModel.SelectedModel.DisplayName, viewModel.SetupHint);
+        Assert.Equal($"USB Audio · {viewModel.SelectedModel.DisplayName} · Español · Whisper", viewModel.ConfigSummary);
+
+        viewModel.SelectedLanguageCode = "en";
+        Assert.Contains("· English ·", viewModel.ConfigSummary);
+    }
+
+    [Fact]
+    public void Con_OpenAi_Por_Defecto_No_Avisa_Del_Modelo_Local()
+    {
+        var settings = new SettingsService(_dataDir) { DefaultEngine = TranscriptionEngineKind.OpenAi };
+        var devices = new EmptyDevices(new AudioDeviceInfo("mic-usb", "USB Audio", AudioDeviceKind.Microphone));
+        var viewModel = new MainViewModel(new EmptyStore(), new ModelManager(_modelsDir), devices, settings: settings);
+
+        Assert.False(viewModel.HasSetupHint);
+        Assert.EndsWith("· OpenAI", viewModel.ConfigSummary);
+    }
+
+    [Fact]
+    public void Con_Microfono_Y_Modelo_Descargado_No_Hay_Aviso()
+    {
+        var devices = new EmptyDevices(new AudioDeviceInfo("mic-usb", "USB Audio", AudioDeviceKind.Microphone));
+        var models = new ModelManager(_modelsDir);
+        var viewModel = new MainViewModel(new EmptyStore(), models, devices);
+        Directory.CreateDirectory(_modelsDir);
+        File.WriteAllBytes(models.GetPath(viewModel.SelectedModel), [0]);
+
+        viewModel.RefreshModelAvailability();
+
+        Assert.False(viewModel.HasSetupHint);
+        Assert.Null(viewModel.SetupHint);
+    }
+
     private sealed class EmptyStore : ISessionStore
     {
         public long SaveSession(string title, DateTime startedAt, TimeSpan activeDuration, string tags, string notes, IReadOnlyList<TranscriptSegment> segments) => 1;

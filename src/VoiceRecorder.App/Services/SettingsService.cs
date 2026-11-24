@@ -19,7 +19,12 @@ internal sealed record SettingsData(
     TranscriptionEngineKind DefaultEngine = TranscriptionEngineKind.Whisper,
     string? OpenAiModel = null,
     string? OpenAiKeyProtected = null,
-    double? OpenAiUsdPerMinute = null);
+    double? OpenAiUsdPerMinute = null,
+    bool HistoryOpen = false,
+    WindowPlacement? MainWindow = null);
+
+/// <summary>Position and size of the main window (in device-independent pixels).</summary>
+public sealed record WindowPlacement(double Left, double Top, double Width, double Height, bool Maximized);
 
 /// <summary>
 /// Preferencias de usuario persistidas en %LOCALAPPDATA%\VoiceRecorder\settings.json
@@ -72,6 +77,12 @@ public sealed class SettingsService
     /// <summary>Precio de OpenAI para estimar costes (USD por minuto); null = precio de referencia.</summary>
     public double? OpenAiUsdPerMinute { get; set; }
 
+    /// <summary>Si el panel del historial estaba abierto al cerrar la ventana.</summary>
+    public bool HistoryOpen { get; set; }
+
+    /// <summary>Posición y tamaño de la ventana principal; null = centrada con el tamaño por defecto.</summary>
+    public WindowPlacement? MainWindow { get; set; }
+
     /// <summary>Indica si hay una clave de respaldo guardada.</summary>
     public bool HasBackupKey => !string.IsNullOrEmpty(_backupKeyProtected);
 
@@ -118,6 +129,8 @@ public sealed class SettingsService
             OpenAiModel = data.OpenAiModel;
             _openAiKeyProtected = data.OpenAiKeyProtected;
             OpenAiUsdPerMinute = data.OpenAiUsdPerMinute is > 0 ? data.OpenAiUsdPerMinute : null;
+            HistoryOpen = data.HistoryOpen;
+            MainWindow = data.MainWindow is { Width: > 0, Height: > 0 } ? data.MainWindow : null;
         }
         catch
         {
@@ -143,7 +156,9 @@ public sealed class SettingsService
                     DefaultEngine,
                     OpenAiModel,
                     _openAiKeyProtected,
-                    OpenAiUsdPerMinute),
+                    OpenAiUsdPerMinute,
+                    HistoryOpen,
+                    MainWindow),
                 JsonOptions));
         }
         catch
