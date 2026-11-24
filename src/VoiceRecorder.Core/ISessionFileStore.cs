@@ -27,4 +27,11 @@ public interface ISessionFileStore : ISessionStore
     /// mismo orden); si un archivo no se puede mover, conserva su ruta original.
     /// </summary>
     IReadOnlyList<string> AttachFiles(long id, IReadOnlyList<string> sourcePaths);
+
+    /// <summary>
+    /// Sustituye la transcripción de la sesión (al transcribir más tarde o
+    /// regenerarla) y registra con qué motor se hizo (<paramref name="run"/>).
+    /// Devuelve false si la sesión no existe.
+    /// </summary>
+    bool ReplaceSegments(long id, IReadOnlyList<TranscriptSegment> segments, TranscriptionRun? run = null);
 }

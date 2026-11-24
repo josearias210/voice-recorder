@@ -1,0 +1,74 @@
+<Window x:Class="VoiceRecorder.App.TranscriptionSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Transcripción · motores"
+        Width="640" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WindowBackground}">
+    <Border Margin="14" Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1" CornerRadius="10" Padding="16">
+        <StackPanel>
+            <TextBlock Text="Motores de transcripción" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" />
+            <TextBlock TextWrapping="Wrap" Margin="0,6,0,12" Foreground="{DynamicResource MutedBrush}" FontSize="12"
+                       Text="El audio siempre se graba primero. Al terminar (o desde «Transcribir…» en el historial) eliges qué motor usar; aquí defines el que se propone por defecto." />
+
+            <TextBlock Text="Motor por defecto" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6" />
+            <RadioButton x:Name="WhisperDefault" GroupName="Default" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4">
+                <TextBlock TextWrapping="Wrap">
+                    <Run Text="Whisper local" FontWeight="SemiBold" /><Run Text=" · gratis, todo en tu equipo. Modelo e idioma en la barra de ajustes." />
+                </TextBlock>
+            </RadioButton>
+            <RadioButton x:Name="OpenAiDefault" GroupName="Default" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,12">
+                <TextBlock TextWrapping="Wrap">
+                    <Run Text="OpenAI" FontWeight="SemiBold" /><Run Text=" · en la nube, de pago (por minuto de voz, según el precio de abajo). Envía el audio a OpenAI." />
+                </TextBlock>
+            </RadioButton>
+
+            <TextBlock Text="OpenAI" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,4,0,6" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Text="Clave de la API (token):" VerticalAlignment="Center"
+                           Foreground="{DynamicResource MutedBrush}" Margin="0,0,10,8" />
+                <PasswordBox Grid.Row="0" Grid.Column="1" x:Name="KeyBox" Margin="0,0,0,8" VerticalContentAlignment="Center"
+                             ToolTip="Clave secreta de platform.openai.com (sk-…). Se guarda cifrada para tu usuario de Windows." />
+
+                <TextBlock Grid.Row="1" Text="Modelo:" VerticalAlignment="Center"
+                           Foreground="{DynamicResource MutedBrush}" Margin="0,0,10,0" />
+                <TextBox Grid.Row="1" Grid.Column="1" x:Name="ModelBox" VerticalContentAlignment="Center" Margin="0,0,0,8"
+                         ToolTip="Identificador del modelo de OpenAI (por defecto gpt-transcribe)" />
+
+                <TextBlock Grid.Row="2" Text="Precio (USD por minuto):" VerticalAlignment="Center"
+                           Foreground="{DynamicResource MutedBrush}" Margin="0,0,10,0" />
+                <TextBox Grid.Row="2" Grid.Column="1" x:Name="PriceBox" VerticalContentAlignment="Center"
+                         ToolTip="Solo para estimar costes en «Costes…». Ajústalo si OpenAI cambia la tarifa o usas otro modelo." />
+            </Grid>
+            <TextBlock x:Name="KeyHint" FontSize="11" Margin="0,4,0,0" Foreground="{DynamicResource MutedBrush}"
+                       TextWrapping="Wrap" />
+            <TextBlock FontSize="11" Margin="0,6,0,0" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"
+                       Text="La detección de voz sigue siendo local: solo se envían a OpenAI los fragmentos con voz, cada uno con su canal (tú o la otra persona). El uso se factura en tu cuenta de OpenAI." />
+
+            <TextBlock x:Name="StatusText" TextWrapping="Wrap" Margin="0,12,0,0" FontSize="12"
+                       Foreground="{DynamicResource AccentBrush}" />
+
+            <DockPanel Margin="0,16,0,0" LastChildFill="False">
+                <Button DockPanel.Dock="Left" x:Name="TestButton" Content="Probar clave" Click="Test_Click"
+                        Style="{StaticResource SecondaryButton}"
+                        ToolTip="Comprueba la clave y el modelo con OpenAI sin enviar audio" />
+                <Button DockPanel.Dock="Left" x:Name="ClearButton" Content="Borrar clave" Click="Clear_Click"
+                        Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" />
+                <Button DockPanel.Dock="Right" Content="Cancelar" IsCancel="True" Click="Cancel_Click"
+                        Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" />
+                <Button DockPanel.Dock="Right" x:Name="SaveButton" Content="Guardar" IsDefault="True" Click="Save_Click" />
+            </DockPanel>
+        </StackPanel>
+    </Border>
+</Window>

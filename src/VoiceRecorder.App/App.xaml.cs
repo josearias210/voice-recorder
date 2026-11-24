@@ -85,7 +85,7 @@ public partial class App : System.Windows.Application
         }
 
         _backup = new BackupCoordinator(settings, _store);
-        var viewModel = new MainViewModel(_store, models, new WasapiDeviceEnumerator(), themes, settings);
+        var viewModel = new MainViewModel(_store, models, new WasapiDeviceEnumerator(), themes, settings, new TranscriptionLog(dataDir));
         _backup.SessionsDownloaded += () => Current.Dispatcher.BeginInvoke(() => viewModel.LoadHistory(viewModel.SearchText));
         if (migrationError is not null)
         {

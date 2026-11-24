@@ -8,6 +8,7 @@ namespace VoiceRecorder.Core;
 /// <param name="Tags">Etiquetas separadas por coma.</param>
 /// <param name="Notes">Notas libres.</param>
 /// <param name="SegmentCount">Número de segmentos transcritos.</param>
+/// <param name="LastTranscription">Última transcripción (motor, tiempo y coste), si la hay.</param>
 public sealed record SessionSummary(
     long Id,
     string Title,
@@ -15,4 +16,5 @@ public sealed record SessionSummary(
     TimeSpan ActiveDuration,
     string Tags,
     string Notes,
-    int SegmentCount);
+    int SegmentCount,
+    TranscriptionRun? LastTranscription = null);

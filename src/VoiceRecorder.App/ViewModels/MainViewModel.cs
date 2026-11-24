@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -7,6 +8,7 @@ using VoiceRecorder.App.Infrastructure;
 using VoiceRecorder.App.Services;
 using VoiceRecorder.Audio;
 using VoiceRecorder.Core;
+using VoiceRecorder.Storage;
 using VoiceRecorder.Transcription;
 using VoiceRecorder.Transcription.Vad;
 
@@ -37,6 +39,10 @@ public sealed class MainViewModel : ViewModelBase
     private readonly ThemeService? _themes;
     private readonly SettingsService? _settings;
     private readonly UpdateService _updates = new();
+    private readonly TranscriptionLog? _costLog;
+
+    /// <summary>Cliente HTTP compartido para la API de OpenAI (un bloque puede tardar).</summary>
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromMinutes(3) };
     private readonly SynchronizationContext _ui;
     private readonly DispatcherTimer _timer;
 
@@ -44,7 +50,6 @@ public sealed class MainViewModel : ViewModelBase
     private WhisperTranscriber? _engine;
     private string? _engineKey;
     private DateTime _sessionStart;
-    private readonly List<TranscriptSegment> _liveSegments = [];
     private SessionState _state = SessionState.Idle;
     private int _importGuard;
     private CancellationTokenSource? _importCts;
@@ -53,20 +58,21 @@ public sealed class MainViewModel : ViewModelBase
     private WavChunkWriter? _loopWriter;
     private bool _isFinalizing;
     private bool _isBusy;
-    private bool _recordAudioFirst;
 
     public MainViewModel(
         ISessionStore store,
         ModelManager models,
         IAudioDeviceEnumerator devices,
         ThemeService? themes = null,
-        SettingsService? settings = null)
+        SettingsService? settings = null,
+        TranscriptionLog? costLog = null)
     {
         _store = store;
         _models = models;
         _devices = devices;
         _themes = themes;
         _settings = settings;
+        _costLog = costLog;
         _settings?.Load();
         _ui = SynchronizationContext.Current ?? new SynchronizationContext();
         _selectedTheme = themes?.Current ?? AppTheme.Dark;
@@ -79,7 +85,6 @@ public sealed class MainViewModel : ViewModelBase
 
         ModelOptions = ModelManager.Catalog;
         LanguageOptions = Languages;
-        _recordAudioFirst = _settings?.RecordAudioFirst ?? false;
         if (_settings?.LanguageCode is { } savedLanguage && Languages.Any(l => l.Code == savedLanguage))
         {
             _selectedLanguageCode = savedLanguage;
@@ -182,25 +187,16 @@ public sealed class MainViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Modo "grabar primero": el audio se guarda en WAV (micrófono y llamada por
-    /// separado) sin transcribir en vivo; al detener se transcribe el archivo.
-    /// Arranque instantáneo (no carga modelos).
+    /// Pregunta al usuario si transcribir y con qué motor (lo asigna la
+    /// ventana). Devuelve null si decide no transcribir por ahora.
     /// </summary>
-    public bool RecordAudioFirst
-    {
-        get => _recordAudioFirst;
-        set
-        {
-            if (Set(ref _recordAudioFirst, value))
-            {
-                OnPropertyChanged(nameof(CanStart));
-                PersistSettings();
-            }
-        }
-    }
+    public Func<TranscriptionPrompt, TranscriptionEngineKind?>? ChooseEngine { get; set; }
+
+    /// <summary>Registro de transcripciones (tiempo y coste) para la ventana «Costes…».</summary>
+    public TranscriptionLog? CostLog => _costLog;
 
     /// <summary>
-    /// Carpeta donde se escriben los WAV del modo "grabar primero" mientras se
+    /// Carpeta donde se escriben los WAV mientras se
     /// graba; al guardar la sesión se mueven a la carpeta de la sesión.
     /// </summary>
     public static string AudioDirectory => Path.Join(
@@ -318,7 +314,7 @@ public sealed class MainViewModel : ViewModelBase
 
     public string PauseButtonText => State == SessionState.Paused ? "Reanudar" : "Pausar";
 
-    private string _statusText = "Listo para grabar. Las llamadas se transcriben en vivo (sin audio guardado).";
+    private string _statusText = "Listo para grabar. El audio se guarda y al detener eliges si transcribirlo.";
 
     public string StatusText
     {
@@ -428,15 +424,11 @@ public sealed class MainViewModel : ViewModelBase
         _settings.ModelFileName = SelectedModel?.FileName;
         _settings.LanguageCode = SelectedLanguageCode;
         _settings.MicrophoneId = SelectedMicrophone?.Id;
-        _settings.RecordAudioFirst = RecordAudioFirst;
         _settings.Save();
     }
 
-    /// <summary>
-    /// Garantiza los modelos y el motor Whisper según la selección actual (con caché).
-    /// En directo (<paramref name="live"/>) usa menos hilos para no quitar CPU a la captura.
-    /// </summary>
-    private async Task<WhisperTranscriber> EnsureEngineAsync(bool live = false, CancellationToken cancellationToken = default)
+    /// <summary>Garantiza los modelos y el motor Whisper según la selección actual (con caché).</summary>
+    private async Task<WhisperTranscriber> EnsureEngineAsync(CancellationToken cancellationToken = default)
     {
         var modelPath = await _models.EnsureWhisperModelAsync(
             SelectedModel,
@@ -454,9 +446,6 @@ public sealed class MainViewModel : ViewModelBase
             _engineKey = engineKey;
         }
 
-        _engine.Threads = live
-            ? WhisperTranscriber.ComputeLiveThreads(Environment.ProcessorCount)
-            : WhisperTranscriber.ComputeThreads(Environment.ProcessorCount);
         return _engine;
     }
 
@@ -500,33 +489,17 @@ public sealed class MainViewModel : ViewModelBase
         IsBusy = true;
         try
         {
-            WhisperTranscriber? engine = null;
-            string vadError = string.Empty;
-            if (RecordAudioFirst)
-            {
-                // Sin transcripción en vivo: no se cargan modelos, arranque inmediato.
-                StatusText = "Preparando captura de audio…";
-            }
-            else
-            {
-                StatusText = "Preparando modelos…";
-                DownloadPercent = 0;
-                engine = await EnsureEngineAsync(live: true);
-                DownloadPercent = 1;
-            }
-
+            // Siempre se graba primero: no se cargan modelos y el arranque es inmediato.
+            StatusText = "Preparando captura de audio…";
             _sessionStart = DateTime.Now;
-            var vadFactory = engine is not null
-                ? await PreloadVadsAsync(2, e => vadError = e)
-                : CreateVadFactory(e => vadError = e);
 
             var microphone = new MicrophoneCaptureService(WasapiDeviceEnumerator.ResolveMicrophoneById(SelectedMicrophone?.Id));
             var loopback = new LoopbackCaptureService();
-            var transcriber = new ConversationTranscriber(engine, vadFactory, microphone, loopback);
+            // Sin motor: el transcriptor solo captura (el VAD no se usa).
+            var transcriber = new ConversationTranscriber(null, () => new EnergyVad(), microphone, loopback);
             // Se asigna ya: si algo falla después, el catch puede liberarlo
             // (Dispose también cierra las capturas).
             _transcriber = transcriber;
-            transcriber.SegmentReady += OnSegmentReady;
             transcriber.StateChanged += state => _ui.Post(
                 _ =>
                 {
@@ -536,25 +509,16 @@ public sealed class MainViewModel : ViewModelBase
                 null);
             transcriber.ErrorOccurred += ex => _ui.Post(_ => StatusText = $"Error: {ex.Message}", null);
 
-            if (RecordAudioFirst)
-            {
-                var baseName = $"grabacion-{_sessionStart:yyyyMMdd-HHmmss}";
-                _micWriter = new WavChunkWriter(Path.Join(AudioDirectory, $"{baseName}-micro.wav"));
-                _loopWriter = new WavChunkWriter(Path.Join(AudioDirectory, $"{baseName}-llamada.wav"));
-                transcriber.AudioTapped += OnAudioTapped;
-            }
+            var baseName = $"grabacion-{_sessionStart:yyyyMMdd-HHmmss}";
+            _micWriter = new WavChunkWriter(Path.Join(AudioDirectory, $"{baseName}{MicSuffix}"));
+            _loopWriter = new WavChunkWriter(Path.Join(AudioDirectory, $"{baseName}{CallSuffix}"));
+            transcriber.AudioTapped += OnAudioTapped;
 
-            _liveSegments.Clear();
             Segments.Clear();
-            _backlogWarningShown = false;
             _transcriber.Start();
 
             _timer.Start();
-            StatusText = RecordAudioFirst
-                ? $"Grabando audio (micrófono y llamada por separado). Se transcribirá al detener. Carpeta: {AudioDirectory}"
-                : string.IsNullOrEmpty(vadError)
-                    ? "Transcripción en vivo (Silero VAD). El audio no se guarda."
-                    : $"Transcripción en vivo (VAD por energía: {vadError}). El audio no se guarda.";
+            StatusText = "Grabando audio (micrófono y llamada por separado). Al detener podrás transcribirlo.";
         }
         catch (Exception ex)
         {
@@ -616,9 +580,7 @@ public sealed class MainViewModel : ViewModelBase
         else if (State == SessionState.Paused)
         {
             _transcriber.Resume();
-            StatusText = RecordAudioFirst
-                ? "Grabando audio. Se transcribirá al detener; los WAV se conservan en disco."
-                : "Transcripción en vivo. El audio no se guarda.";
+            StatusText = "Grabando audio. Al detener podrás transcribirlo.";
         }
     }
 
@@ -632,24 +594,11 @@ public sealed class MainViewModel : ViewModelBase
         var transcriber = _transcriber;
         _transcriber = null;
         IsFinalizing = true;
+        long? savedId = null;
         try
         {
             StatusText = "Deteniendo y guardando…";
-            var stopTask = transcriber.StopAsync();
-            while (!stopTask.IsCompleted)
-            {
-                // En directo, las frases que Whisper aún no ha procesado se
-                // terminan de transcribir: se muestra cuántas quedan.
-                var pending = transcriber.PendingUtterances;
-                if (pending > 0)
-                {
-                    StatusText = $"Terminando la transcripción en vivo… quedan {pending} frases.";
-                }
-
-                await Task.WhenAny(stopTask, Task.Delay(500));
-            }
-
-            await stopTask;
+            await transcriber.StopAsync();
             UpdateElapsed(transcriber);
             _timer.Stop();
 
@@ -658,50 +607,13 @@ public sealed class MainViewModel : ViewModelBase
             var loopPath = _loopWriter?.FilePath;
             DisposeAudioWriters();
 
+            // La sesión se guarda sin transcripción: el audio queda en su carpeta
+            // y se transcribe cuando el usuario lo decida (ahora o más tarde).
             var duration = transcriber.ActiveElapsed;
-            IReadOnlyList<TranscriptSegment> segments;
-            var notes = string.Empty;
-            string? transcriptionError = null;
-
-            if (RecordAudioFirst && micPath is not null)
-            {
-                // Modo "grabar primero": ahora sí, transcripción del archivo.
-                DownloadPercent = 0;
-                try
-                {
-                    segments = await TranscribeRecordingsAsync(micPath, loopPath);
-                    notes = BuildAudioNotes(micPath, loopPath);
-                }
-                catch (Exception ex)
-                {
-                    // La grabación existe aunque falle la transcripción: se guarda igual.
-                    segments = [];
-                    notes = BuildAudioNotes(micPath, loopPath);
-                    transcriptionError = ex.Message;
-                }
-                finally
-                {
-                    DownloadPercent = -1;
-                }
-            }
-            else
-            {
-                lock (_liveSegments)
-                {
-                    segments = [.. _liveSegments];
-                }
-            }
-
             var title = $"Llamada {_sessionStart:dd/MM HH:mm}";
-            var id = await Task.Run(() => _store.SaveSession(
-                title,
-                _sessionStart,
-                duration,
-                string.Empty,
-                notes,
-                segments));
+            var notes = micPath is null ? string.Empty : BuildAudioNotes(micPath, loopPath);
+            var id = await Task.Run(() => _store.SaveSession(title, _sessionStart, duration, string.Empty, notes, []));
 
-            // Los WAV pasan de la carpeta temporal a la carpeta de la sesión.
             var audioFolder = AudioDirectory;
             if (micPath is not null && _store is ISessionFileStore fileStore)
             {
@@ -710,11 +622,8 @@ public sealed class MainViewModel : ViewModelBase
                 audioFolder = fileStore.GetSessionFolder(id) ?? audioFolder;
             }
 
-            StatusText = transcriptionError is not null
-                ? $"Sesión y audio guardados en {audioFolder}, pero no se pudo transcribir: {transcriptionError}. Puedes importar los WAV para reintentar."
-                : RecordAudioFirst
-                ? $"Sesión guardada ({segments.Count} segmentos). Audio conservado en {audioFolder}"
-                : $"Sesión guardada ({segments.Count} segmentos).";
+            savedId = id;
+            StatusText = $"Grabación guardada en {audioFolder}.";
             Segments.Clear();
             LoadHistory(SearchText);
         }
@@ -729,6 +638,11 @@ public sealed class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(CanStart));
             CommandManager.InvalidateRequerySuggested();
         }
+
+        if (savedId is { } sessionId)
+        {
+            await RequestSessionTranscriptionAsync(sessionId, justRecorded: true);
+        }
     }
 
     /// <summary>Notas de sesión con la ruta de los WAV conservados.</summary>
@@ -736,20 +650,244 @@ public sealed class MainViewModel : ViewModelBase
         ? $"Audio (micro): {micPath}"
         : $"Audio (micro): {micPath}\nAudio (llamada): {loopPath}";
 
-    /// <summary>
-    /// Transcribe los WAV del micrófono y de la llamada del modo "grabar
-    /// primero", etiquetando cada canal con su hablante y fusionando los
-    /// segmentos ordenados por tiempo.
-    /// </summary>
-    private async Task<IReadOnlyList<TranscriptSegment>> TranscribeRecordingsAsync(string micPath, string? loopPath)
-    {
-        StatusText = "Preparando modelos…";
-        var engine = await EnsureEngineAsync();
+    /// <summary>Sufijo del WAV del micrófono (tu voz).</summary>
+    public const string MicSuffix = "-micro.wav";
 
+    /// <summary>Sufijo del WAV de la llamada (la otra persona).</summary>
+    public const string CallSuffix = "-llamada.wav";
+
+    /// <summary>
+    /// Busca en la carpeta de una sesión sus grabaciones (micrófono y llamada).
+    /// Devuelve rutas nulas si no hay audio.
+    /// </summary>
+    public static (string? Mic, string? Call) FindRecordings(string? folder)
+    {
+        if (folder is null || !Directory.Exists(folder))
+        {
+            return (null, null);
+        }
+
+        var files = Directory.EnumerateFiles(folder, "*.wav").OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToList();
+        return (
+            files.FirstOrDefault(f => f.EndsWith(MicSuffix, StringComparison.OrdinalIgnoreCase)),
+            files.FirstOrDefault(f => f.EndsWith(CallSuffix, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
+    /// Pregunta si transcribir (y con qué motor) la grabación de una sesión y,
+    /// si se acepta, la transcribe. Sirve tanto al detener como para
+    /// regenerar la transcripción desde el historial.
+    /// </summary>
+    public async Task RequestSessionTranscriptionAsync(long sessionId, bool justRecorded = false)
+    {
+        if (!CanStart || _store is not ISessionFileStore fileStore || _store.GetSession(sessionId) is not ({ } session, var existing))
+        {
+            return;
+        }
+
+        var (mic, call) = FindRecordings(fileStore.GetSessionFolder(sessionId));
+        if (mic is null && call is null)
+        {
+            StatusText = $"«{session.Title}» no tiene audio grabado: no se puede transcribir de nuevo.";
+            return;
+        }
+
+        var prompt = new TranscriptionPrompt(
+            justRecorded ? "Grabación terminada" : "Transcribir sesión",
+            justRecorded
+                ? $"«{session.Title}» se ha guardado con su audio. ¿Quieres transcribirla ahora?"
+                : existing.Count > 0
+                    ? $"Se volverá a transcribir «{session.Title}» y se reemplazará su transcripción actual ({existing.Count} segmentos)."
+                    : $"Se transcribirá «{session.Title}».",
+            justRecorded ? "Más tarde" : "Cancelar",
+            AudioDuration(mic, call));
+        if (ChooseEngine?.Invoke(prompt) is not { } kind)
+        {
+            if (justRecorded)
+            {
+                StatusText = "Grabación guardada sin transcribir. Puedes transcribirla cuando quieras con «Transcribir…» en el historial.";
+            }
+
+            return;
+        }
+
+        await TranscribeSessionAsync(sessionId, kind);
+    }
+
+    /// <summary>Duración aproximada de las grabaciones (bytes PCM mono 16 bits a 16 kHz).</summary>
+    private static TimeSpan AudioDuration(params string?[] paths) => TimeSpan.FromSeconds(paths
+        .Where(p => p is not null && File.Exists(p))
+        .Sum(p => Math.Max(0, new FileInfo(p!).Length - 44) / 32000.0));
+
+    /// <summary>
+    /// Transcribe (o vuelve a transcribir) el audio guardado de una sesión con
+    /// el motor indicado y sustituye su transcripción.
+    /// </summary>
+    public async Task TranscribeSessionAsync(long sessionId, TranscriptionEngineKind kind)
+    {
+        if (!CanStart || _store is not ISessionFileStore fileStore)
+        {
+            return;
+        }
+
+        if (Interlocked.Exchange(ref _importGuard, 1) == 1)
+        {
+            return;
+        }
+
+        using var cancellation = new CancellationTokenSource();
+        _importCts = cancellation;
+        IsImporting = true;
+        ITranscriptionEngine? engine = null;
+        var title = _store.GetSession(sessionId)?.Session.Title;
+        var startedAt = DateTime.Now;
+        var clock = new System.Diagnostics.Stopwatch();
+        var (mic, call) = FindRecordings(fileStore.GetSessionFolder(sessionId));
+        var audio = AudioDuration(mic, call);
+        try
+        {
+            Segments.Clear();
+            engine = await CreateEngineAsync(kind, cancellation.Token);
+            startedAt = DateTime.Now;
+            clock.Start();
+            var segments = await TranscribeRecordingsAsync(engine, mic, call, cancellation.Token);
+            cancellation.Token.ThrowIfCancellationRequested();
+            clock.Stop();
+
+            var run = BuildRun(engine, startedAt, clock.Elapsed, audio, sessionId, title, completed: true);
+            await Task.Run(() => fileStore.ReplaceSegments(sessionId, segments, run));
+            RecordRun(run);
+            StatusText = $"Transcripción guardada: {segments.Count} segmentos · {CostFormat.Summary(run)}.";
+            LoadHistory(SearchText);
+            SessionImported?.Invoke(sessionId);
+        }
+        catch (OperationCanceledException)
+        {
+            RecordFailedRun(engine, startedAt, clock, audio, sessionId, title);
+            StatusText = "Transcripción cancelada: la sesión conserva su transcripción anterior.";
+        }
+        catch (Exception ex)
+        {
+            RecordFailedRun(engine, startedAt, clock, audio, sessionId, title);
+            StatusText = $"No se pudo transcribir: {ex.Message} El audio sigue guardado; puedes reintentarlo con «Transcribir…».";
+        }
+        finally
+        {
+            IsImporting = false;
+            _importCts = null;
+            DownloadPercent = -1;
+            Interlocked.Exchange(ref _importGuard, 0);
+            OnPropertyChanged(nameof(CanStart));
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
+    /// <summary>Crea el motor elegido: Whisper local (con caché) u OpenAI (con la clave guardada).</summary>
+    private async Task<ITranscriptionEngine> CreateEngineAsync(TranscriptionEngineKind kind, CancellationToken cancellationToken)
+    {
+        if (kind == TranscriptionEngineKind.OpenAi)
+        {
+            await _models.EnsureVadModelAsync(cancellationToken); // El VAD sigue siendo local.
+            var key = _settings?.GetOpenAiKey();
+            if (string.IsNullOrEmpty(key))
+            {
+                throw new InvalidOperationException("Falta la clave de OpenAI: configúrala en «Transcripción…».");
+            }
+
+            return new OpenAiTranscriber(Http, key, _settings?.OpenAiModel, SelectedLanguageCode, usdPerMinute: _settings?.OpenAiUsdPerMinute);
+        }
+
+        StatusText = "Preparando modelos…";
+        DownloadPercent = 0;
+        return await EnsureEngineAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Datos de una transcripción para el registro de costes. Con OpenAI se
+    /// cuenta el audio enviado desde <paramref name="sentBefore"/> (un mismo
+    /// motor puede transcribir varios archivos); con Whisper, el coste es 0.
+    /// </summary>
+    private TranscriptionRun BuildRun(
+        ITranscriptionEngine engine,
+        DateTime startedAt,
+        TimeSpan elapsed,
+        TimeSpan audio,
+        long? sessionId,
+        string? title,
+        bool completed,
+        TimeSpan sentBefore = default)
+    {
+        if (engine is OpenAiTranscriber openAi)
+        {
+            var sent = openAi.AudioSent - sentBefore;
+            return new TranscriptionRun(
+                startedAt,
+                "OpenAI",
+                openAi.Model,
+                elapsed,
+                sent.TotalSeconds,
+                sent.TotalMinutes * openAi.PricePerMinute,
+                sessionId,
+                title,
+                completed);
+        }
+
+        var model = SelectedModel.DisplayName.Split(" · ")[0];
+        return new TranscriptionRun(startedAt, "Whisper", model, elapsed, audio.TotalSeconds, 0, sessionId, title, completed);
+    }
+
+    /// <summary>Guarda la transcripción en el registro de costes (un fallo de escritura no interrumpe).</summary>
+    private void RecordRun(TranscriptionRun run)
+    {
+        try
+        {
+            _costLog?.Append(run);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Sin registro de costes no se pierde la transcripción.
+        }
+    }
+
+    /// <summary>
+    /// Si una transcripción con OpenAI falla o se cancela a medias, el audio ya
+    /// enviado se ha facturado igualmente: se registra como incompleta.
+    /// </summary>
+    private void RecordFailedRun(
+        ITranscriptionEngine? engine,
+        DateTime startedAt,
+        System.Diagnostics.Stopwatch clock,
+        TimeSpan audio,
+        long? sessionId,
+        string? title,
+        TimeSpan sentBefore = default)
+    {
+        if (engine is OpenAiTranscriber openAi && openAi.AudioSent > sentBefore)
+        {
+            clock.Stop();
+            RecordRun(BuildRun(engine, startedAt, clock.Elapsed, audio, sessionId, title, completed: false, sentBefore));
+        }
+    }
+
+    /// <summary>
+    /// Transcribe los WAV del micrófono y de la llamada, etiquetando cada
+    /// canal con su hablante y fusionando los segmentos ordenados por tiempo.
+    /// </summary>
+    private async Task<IReadOnlyList<TranscriptSegment>> TranscribeRecordingsAsync(
+        ITranscriptionEngine engine,
+        string? micPath,
+        string? loopPath,
+        CancellationToken cancellationToken)
+    {
         string vadError = string.Empty;
         var vadFactory = await PreloadVadsAsync(2, e => vadError = e);
 
-        var recordings = new List<(string Path, Speaker Speaker)> { (micPath, Speaker.Me) };
+        var recordings = new List<(string Path, Speaker Speaker)>();
+        if (micPath is not null)
+        {
+            recordings.Add((micPath, Speaker.Me));
+        }
+
         if (loopPath is not null)
         {
             recordings.Add((loopPath, Speaker.Them));
@@ -763,9 +901,10 @@ public sealed class MainViewModel : ViewModelBase
             weights.Add(File.Exists(path) ? Math.Max(1, new FileInfo(path).Length - 44) / 32000.0 : 0);
         }
 
-        var totalWeight = weights.Sum();
+        var totalWeight = Math.Max(weights.Sum(), 1);
         var doneWeight = 0.0;
         var segments = new List<TranscriptSegment>();
+        DownloadPercent = 0;
         for (var i = 0; i < recordings.Count; i++)
         {
             var (path, speaker) = recordings[i];
@@ -774,19 +913,23 @@ public sealed class MainViewModel : ViewModelBase
                 continue; // Archivo vacío o ausente (canal sin audio).
             }
 
-            StatusText = $"Transcribiendo audio grabado ({(speaker == Speaker.Me ? "micrófono" : "llamada")})…";
+            var channel = speaker == Speaker.Me ? "micrófono" : "llamada";
+            StatusText = $"Transcribiendo audio grabado ({channel})…";
             var offset = doneWeight / totalWeight;
             var span = weights[i] / totalWeight;
+            // Cada canal empieza sin el contexto del anterior.
+            await engine.ResetContextAsync();
             using var source = AudioFileDecoder.Open(path);
             var progress = new Progress<double>(p => _ui.Post(_ =>
             {
                 DownloadPercent = Math.Min(1, offset + span * p);
-                StatusText = $"Transcribiendo audio grabado ({(speaker == Speaker.Me ? "micrófono" : "llamada")})… {p:P0}";
+                StatusText = $"Transcribiendo audio grabado ({channel})… {p:P0}";
             }, null));
 
             var fileTranscriber = new FileTranscriber(engine, vadFactory, speaker);
+            fileTranscriber.SegmentReady += PostSegmentToUi;
             var channelSegments = await Task.Run(
-                () => fileTranscriber.TranscribeAsync(source, progress, CancellationToken.None));
+                () => fileTranscriber.TranscribeAsync(source, progress, cancellationToken), cancellationToken);
             segments.AddRange(channelSegments);
             doneWeight += weights[i];
         }
@@ -860,14 +1003,33 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
+        var prompt = new TranscriptionPrompt(
+            "Transcribir archivos",
+            files.Count == 1
+                ? $"Se transcribirá «{Path.GetFileName(files[0])}» y se guardará como una sesión."
+                : $"Se transcribirán {files.Count} archivos; cada uno se guardará como una sesión.",
+            "Cancelar",
+            TimeSpan.Zero);
+        TranscriptionEngineKind kind;
+        if (ChooseEngine is null)
+        {
+            kind = _settings?.DefaultEngine ?? TranscriptionEngineKind.Whisper;
+        }
+        else if (ChooseEngine(prompt) is { } chosen)
+        {
+            kind = chosen;
+        }
+        else
+        {
+            return;
+        }
+
         using var cancellation = new CancellationTokenSource();
         _importCts = cancellation;
         IsImporting = true;
         try
         {
-            StatusText = "Preparando modelos…";
-            DownloadPercent = 0;
-            var engine = await EnsureEngineAsync(cancellationToken: cancellation.Token);
+            var engine = await CreateEngineAsync(kind, cancellation.Token);
 
             var vadError = string.Empty;
             var transcriber = new FileTranscriber(engine, CreateVadFactory(e => vadError = e));
@@ -878,13 +1040,18 @@ public sealed class MainViewModel : ViewModelBase
                 var file = files[i];
                 var name = Path.GetFileName(file);
                 var prefix = files.Count > 1 ? $"[{i + 1}/{files.Count}] " : string.Empty;
+                var startedAt = DateTime.Now;
+                var clock = System.Diagnostics.Stopwatch.StartNew();
+                var sentBefore = (engine as OpenAiTranscriber)?.AudioSent ?? TimeSpan.Zero;
+                var fileAudio = TimeSpan.Zero;
                 try
                 {
                     StatusText = $"{prefix}Transcribiendo {name}…";
                     Segments.Clear();
 
-                    var startedAt = DateTime.Now;
+                    await engine.ResetContextAsync();
                     using var source = AudioFileDecoder.Open(file);
+                    fileAudio = source.Duration;
                     var progress = new Progress<double>(p => _ui.Post(_ =>
                     {
                         DownloadPercent = p;
@@ -904,10 +1071,18 @@ public sealed class MainViewModel : ViewModelBase
                         "archivo",
                         notes,
                         segments));
+                    clock.Stop();
 
+                    var run = BuildRun(engine, startedAt, clock.Elapsed, fileAudio, savedId, title, completed: true, sentBefore);
+                    if (_store is ISessionFileStore fileStore)
+                    {
+                        await Task.Run(() => fileStore.ReplaceSegments(savedId, segments, run));
+                    }
+
+                    RecordRun(run);
                     StatusText = vadError.Length == 0
-                        ? $"{prefix}{name}: guardada ({segments.Count} segmentos)."
-                        : $"{prefix}{name}: guardada ({segments.Count} segmentos, VAD por energía).";
+                        ? $"{prefix}{name}: guardada · {segments.Count} segmentos · {CostFormat.Summary(run)}."
+                        : $"{prefix}{name}: guardada · {segments.Count} segmentos · {CostFormat.Summary(run)} (VAD por energía).";
                     if (files.Count == 1)
                     {
                         SessionImported?.Invoke(savedId);
@@ -915,10 +1090,12 @@ public sealed class MainViewModel : ViewModelBase
                 }
                 catch (OperationCanceledException)
                 {
+                    RecordFailedRun(engine, startedAt, clock, fileAudio, null, name, sentBefore);
                     StatusText = "Importación cancelada (no se ha guardado).";
                 }
                 catch (Exception ex)
                 {
+                    RecordFailedRun(engine, startedAt, clock, fileAudio, null, name, sentBefore);
                     StatusText = $"{prefix}Error con {name}: {ex.Message}";
                 }
             }
@@ -1101,16 +1278,6 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
-    private void OnSegmentReady(TranscriptSegment segment)
-    {
-        lock (_liveSegments)
-        {
-            _liveSegments.Add(segment);
-        }
-
-        PostSegmentToUi(segment);
-    }
-
     /// <summary>Publica un segmento en el panel de transcripción (hilo UI, ordenado por tiempo).</summary>
     private void PostSegmentToUi(TranscriptSegment segment)
     {
@@ -1127,36 +1294,20 @@ public sealed class MainViewModel : ViewModelBase
         }, null);
     }
 
-    /// <summary>Frases en cola a partir de las cuales se avisa de que el directo va con retraso.</summary>
-    private const int LiveBacklogWarning = 3;
-
-    private bool _backlogWarningShown;
-
     private void UpdateElapsed() => UpdateElapsed(_transcriber);
 
     private void UpdateElapsed(ConversationTranscriber? transcriber)
     {
-        if (transcriber is null)
+        if (transcriber is not null)
         {
-            return;
-        }
-
-        ElapsedText = transcriber.ActiveElapsed.ToString(@"hh\:mm\:ss");
-        if (RecordAudioFirst || transcriber.State != SessionState.Recording)
-        {
-            return;
-        }
-
-        var pending = transcriber.PendingUtterances;
-        if (pending >= LiveBacklogWarning)
-        {
-            StatusText = $"Los subtítulos van con retraso ({pending} frases en cola): prueba un modelo más rápido o el modo «Grabar audio y transcribir al detener».";
-            _backlogWarningShown = true;
-        }
-        else if (_backlogWarningShown && pending == 0)
-        {
-            StatusText = "Transcripción en vivo. El audio no se guarda.";
-            _backlogWarningShown = false;
+            ElapsedText = transcriber.ActiveElapsed.ToString(@"hh\:mm\:ss");
         }
     }
 }
+
+/// <summary>Datos para preguntar si transcribir y con qué motor.</summary>
+/// <param name="Title">Título del diálogo.</param>
+/// <param name="Message">Explicación (qué se transcribe y si se reemplaza algo).</param>
+/// <param name="DeclineText">Texto del botón para no transcribir ahora.</param>
+/// <param name="AudioDuration">Duración del audio a transcribir (para estimar coste y tiempo).</param>
+public sealed record TranscriptionPrompt(string Title, string Message, string DeclineText, TimeSpan AudioDuration);

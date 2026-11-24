@@ -22,5 +22,12 @@ public sealed class SessionRowVm
 
     public string TagsText => string.IsNullOrWhiteSpace(Summary.Tags) ? "—" : Summary.Tags;
 
-    public string SegmentCountText => $"{Summary.SegmentCount} segmentos";
+    public string SegmentCountText => Summary.SegmentCount > 0 ? $"{Summary.SegmentCount} segmentos" : "sin transcribir";
+
+    /// <summary>Última transcripción: "OpenAI · 3 min 20 s · ≈ 0,014 USD" (vacío si no hay datos).</summary>
+    public string TranscriptionText => Summary.LastTranscription is { } run
+        ? $"🧾 {Services.CostFormat.Summary(run)}"
+        : string.Empty;
+
+    public bool HasTranscriptionInfo => Summary.LastTranscription is not null;
 }

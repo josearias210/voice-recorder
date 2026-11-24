@@ -110,31 +110,6 @@ public class MainViewModelOptionsTests : IDisposable
         Assert.Equal("ggml-tiny-q5_1.bin", reloaded.ModelFileName);
     }
 
-    [Fact]
-    public void Cambiar_RecordAudioFirst_Persiste_La_Preferencia()
-    {
-        var settings = new SettingsService(_dataDir);
-        var viewModel = new MainViewModel(new EmptyStore(), new ModelManager(_modelsDir), new EmptyDevices(), settings: settings);
-
-        Assert.False(viewModel.RecordAudioFirst);
-        viewModel.RecordAudioFirst = true;
-
-        var reloaded = new SettingsService(_dataDir);
-        reloaded.Load();
-        Assert.True(reloaded.RecordAudioFirst);
-    }
-
-    [Fact]
-    public void RecordAudioFirst_Guardado_Se_Restaura_Al_Arrancar()
-    {
-        var settings = new SettingsService(_dataDir) { RecordAudioFirst = true };
-        settings.Save();
-
-        var viewModel = new MainViewModel(new EmptyStore(), new ModelManager(_modelsDir), new EmptyDevices(), settings: settings);
-
-        Assert.True(viewModel.RecordAudioFirst);
-    }
-
     private sealed class EmptyStore : ISessionStore
     {
         public long SaveSession(string title, DateTime startedAt, TimeSpan activeDuration, string tags, string notes, IReadOnlyList<TranscriptSegment> segments) => 1;

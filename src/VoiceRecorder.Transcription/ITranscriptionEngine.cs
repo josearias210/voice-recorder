@@ -10,4 +10,20 @@ public interface ITranscriptionEngine
     /// (tiempo activo de la sesión).
     /// </summary>
     Task<IReadOnlyList<TranscriptSegment>> TranscribeAsync(Utterance utterance, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Olvida el contexto acumulado (texto ya transcrito) antes de empezar
+    /// otro archivo o canal. Por defecto no hace nada.
+    /// </summary>
+    Task ResetContextAsync() => Task.CompletedTask;
+}
+
+/// <summary>Motores de transcripción disponibles.</summary>
+public enum TranscriptionEngineKind
+{
+    /// <summary>Whisper (whisper.cpp) en el equipo: gratis y sin enviar nada fuera.</summary>
+    Whisper,
+
+    /// <summary>API de OpenAI (gpt-transcribe): envía el audio a OpenAI, de pago.</summary>
+    OpenAi,
 }

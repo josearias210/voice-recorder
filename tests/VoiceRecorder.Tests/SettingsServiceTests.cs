@@ -1,4 +1,5 @@
 using VoiceRecorder.App.Services;
+using VoiceRecorder.Transcription;
 
 namespace VoiceRecorder.Tests;
 
@@ -22,7 +23,6 @@ public class SettingsServiceTests : IDisposable
             ModelFileName = "ggml-small-q5_1.bin",
             LanguageCode = "en",
             MicrophoneId = "mic-usb-1",
-            RecordAudioFirst = true,
         };
         original.Save();
 
@@ -32,7 +32,6 @@ public class SettingsServiceTests : IDisposable
         Assert.Equal("ggml-small-q5_1.bin", restarted.ModelFileName);
         Assert.Equal("en", restarted.LanguageCode);
         Assert.Equal("mic-usb-1", restarted.MicrophoneId);
-        Assert.True(restarted.RecordAudioFirst);
     }
 
     [Fact]
@@ -44,7 +43,8 @@ public class SettingsServiceTests : IDisposable
         Assert.Null(service.ModelFileName);
         Assert.Null(service.LanguageCode);
         Assert.Null(service.MicrophoneId);
-        Assert.False(service.RecordAudioFirst);
+        Assert.Equal(TranscriptionEngineKind.Whisper, service.DefaultEngine);
+        Assert.False(service.HasOpenAiKey);
     }
 
     [Fact]
@@ -80,6 +80,31 @@ public class SettingsServiceTests : IDisposable
         Assert.Equal("voice-recorder", restarted.BackupContainer);
         Assert.True(restarted.HasBackupKey);
         Assert.Equal("clave-secreta-de-prueba", restarted.GetBackupKey());
+    }
+
+    [Fact]
+    public void Motor_Y_Clave_De_OpenAI_Se_Persisten_Y_La_Clave_Va_Cifrada()
+    {
+        var original = new SettingsService(_dataDir)
+        {
+            DefaultEngine = TranscriptionEngineKind.OpenAi,
+            OpenAiModel = "gpt-transcribe",
+        };
+        original.SetOpenAiKey("  sk-clave-de-prueba  ");
+        original.Save();
+
+        Assert.DoesNotContain("sk-clave-de-prueba", File.ReadAllText(Path.Join(_dataDir, "settings.json")));
+
+        var restarted = new SettingsService(_dataDir);
+        restarted.Load();
+        Assert.Equal(TranscriptionEngineKind.OpenAi, restarted.DefaultEngine);
+        Assert.Equal("gpt-transcribe", restarted.OpenAiModel);
+        Assert.True(restarted.HasOpenAiKey);
+        Assert.Equal("sk-clave-de-prueba", restarted.GetOpenAiKey());
+        Assert.Null(restarted.GetBackupKey()); // Claves separadas.
+
+        restarted.SetOpenAiKey(null);
+        Assert.False(restarted.HasOpenAiKey);
     }
 
     [Fact]

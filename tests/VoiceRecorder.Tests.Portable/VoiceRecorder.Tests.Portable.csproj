@@ -32,9 +32,12 @@
     <Compile Include="..\VoiceRecorder.Tests\FileSessionStoreTests.cs" Link="Shared\%(Filename)%(Extension)" />
     <Compile Include="..\VoiceRecorder.Tests\FileTranscriberTests.cs" Link="Shared\%(Filename)%(Extension)" />
     <Compile Include="..\VoiceRecorder.Tests\ModelManagerTests.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="..\VoiceRecorder.Tests\OpenAiTranscriberTests.cs" Link="Shared\%(Filename)%(Extension)" />
     <Compile Include="..\VoiceRecorder.Tests\SilenceGapTests.cs" Link="Shared\%(Filename)%(Extension)" />
     <Compile Include="..\VoiceRecorder.Tests\SpeechSegmenterTests.cs" Link="Shared\%(Filename)%(Extension)" />
     <Compile Include="..\VoiceRecorder.Tests\SQLiteSessionStoreTests.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="..\VoiceRecorder.Tests\TranscriptionLogTests.cs" Link="Shared\%(Filename)%(Extension)" />
+    <Compile Include="..\VoiceRecorder.Tests\UtteranceBatcherTests.cs" Link="Shared\%(Filename)%(Extension)" />
     <Compile Include="..\VoiceRecorder.Tests\WhisperTranscriberTests.cs" Link="Shared\%(Filename)%(Extension)" />
   </ItemGroup>
 
