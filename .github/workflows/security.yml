@@ -1,0 +1,101 @@
+name: Security
+
+# Barreras de seguridad del repositorio:
+#   * secretos en TODO el historial de git (dos motores distintos);
+#   * auditoría de seguridad de los propios workflows de GitHub Actions.
+# Se ejecuta en cada push y PR, y también cada semana: las reglas de los
+# escáneres se actualizan y pueden detectar algo que antes pasaba.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "41 6 * * 1" # lunes, 06:41 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  secrets-scan:
+    name: Secrets scan (gitleaks + TruffleHog)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      # Publica los hallazgos de gitleaks en Security → Code scanning.
+      security-events: write
+    steps:
+      - name: Checkout (todo el historial y todas las ramas)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Un secreto borrado en un commit posterior sigue siendo público en el
+      # historial: se revisan todos los commits de todas las ramas, no solo HEAD.
+      - name: Gitleaks (todo el historial)
+        run: >-
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo"
+          -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*'
+          zricethezav/gitleaks:v8.30.1 git /repo --log-opts="--all" --redact --no-banner --exit-code 1
+          --report-format sarif --report-path /repo/gitleaks.sarif
+
+      # Segundo motor, con otras reglas: además comprueba contra el proveedor si
+      # una credencial encontrada sigue activa. Falla con secretos verificados o
+      # que no se han podido verificar (unknown); ignora los descartados.
+      - name: TruffleHog (todo el historial)
+        if: always()
+        run: >-
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro"
+          trufflesecurity/trufflehog:3.100.1 git file:///repo
+          --no-update --results=verified,unknown --fail
+
+      # Los PR desde forks no tienen permiso de escritura: ahí solo fallan los
+      # pasos anteriores, que son los que bloquean el PR.
+      - name: Upload gitleaks report
+        if: always() && hashFiles('gitleaks.sarif') != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
+        with:
+          sarif_file: gitleaks.sarif
+          category: gitleaks
+
+  workflows-audit:
+    name: Auditoría de workflows (zizmor)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Detecta inyección de código vía ${{ }}, permisos excesivos, acciones sin
+      # fijar a un commit, credenciales persistidas, etc. Falla el PR si hay algo.
+      - name: zizmor
+        run: >-
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo"
+          python:3.13-slim sh -c
+          "pip install --quiet --disable-pip-version-check zizmor==1.33.1
+          && zizmor --offline --format sarif /repo/.github/workflows > /repo/zizmor.sarif;
+          code=\$?;
+          zizmor --offline /repo/.github/workflows;
+          exit \$code"
+
+      - name: Upload zizmor report
+        if: always() && hashFiles('zizmor.sarif') != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
+        with:
+          sarif_file: zizmor.sarif
+          category: zizmor
