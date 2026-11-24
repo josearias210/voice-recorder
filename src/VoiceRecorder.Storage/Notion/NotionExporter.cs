@@ -269,9 +269,8 @@ public sealed partial class NotionExporter
     internal static List<JsonObject> MarkdownToBlocks(string markdown, bool demoteHeadings = false)
     {
         var blocks = new List<JsonObject>();
-        foreach (var line in markdown.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n').Select(rawLine => rawLine.TrimEnd()))
+        foreach (var trimmed in markdown.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n').Select(line => line.Trim()))
         {
-            var trimmed = line.TrimStart();
             if (trimmed.Length == 0)
             {
                 continue;

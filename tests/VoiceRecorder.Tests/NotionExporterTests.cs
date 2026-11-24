@@ -235,8 +235,10 @@ public class NotionExporterTests
     [Fact]
     public async Task Base_De_Datos_No_Compartida_Da_Un_Error_Claro()
     {
-        var handler = new FakeNotion();
-        var exporter = new NotionExporter(new HttpClient(handler), "ntn_prueba", DatabaseId);
+        // Notion answers 404 when the database is not shared with the integration.
+        using var handler = new StatusHandler(HttpStatusCode.NotFound, """{"object":"error","message":"Could not find database"}""");
+        using var http = new HttpClient(handler);
+        var exporter = new NotionExporter(http, "ntn_prueba", DatabaseId);
 
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() => exporter.GetDatabaseInfoAsync(CancellationToken.None));
 
@@ -245,6 +247,15 @@ public class NotionExporterTests
     }
 
     [Fact]
-    public void Un_Id_Invalido_Se_Rechaza_Al_Crear_El_Exportador() =>
-        Assert.Throws<ArgumentException>(() => new NotionExporter(new HttpClient(), "ntn_prueba", "no es un id"));
+    public void Un_Id_Invalido_Se_Rechaza_Al_Crear_El_Exportador()
+    {
+        using var http = new HttpClient();
+        Assert.Throws<ArgumentException>(() => new NotionExporter(http, "ntn_prueba", "no es un id"));
+    }
+
+    private sealed class StatusHandler(HttpStatusCode status, string json) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(json, Encoding.UTF8, "application/json") });
+    }
 }
