@@ -69,7 +69,9 @@
         </Border>
 
         <!-- Resumen y análisis (IA) -->
-        <StackPanel Grid.Row="1">
+        <!-- Capped so the conversation keeps room on small screens. -->
+        <ScrollViewer Grid.Row="1" MaxHeight="210" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+        <StackPanel>
         <Border Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="1" CornerRadius="12" Padding="10,6" Margin="0,0,0,10"
                 Visibility="{Binding HasCallSummary, Converter={StaticResource BoolToVis}}">
@@ -82,7 +84,7 @@
                     </StackPanel>
                 </Expander.Header>
                 <TextBox Text="{Binding CallSummaryText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
-                         MaxHeight="220" VerticalScrollBarVisibility="Auto" Margin="0,6,0,2"
+                         MaxHeight="150" VerticalScrollBarVisibility="Auto" Margin="0,6,0,2"
                          Background="Transparent" BorderThickness="0"
                          Foreground="{DynamicResource TextBrush}" CaretBrush="{DynamicResource TextBrush}"
                          ToolTip="Resumen generado con OpenAI a partir de la transcripción. Puede contener errores: revísalo." />
@@ -102,13 +104,14 @@
                     </StackPanel>
                 </Expander.Header>
                 <TextBox Text="{Binding ReviewText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
-                         MaxHeight="260" VerticalScrollBarVisibility="Auto" Margin="0,6,0,2"
+                         MaxHeight="150" VerticalScrollBarVisibility="Auto" Margin="0,6,0,2"
                          Background="Transparent" BorderThickness="0"
                          Foreground="{DynamicResource TextBrush}" CaretBrush="{DynamicResource TextBrush}"
                          ToolTip="Evaluación generada con OpenAI de cómo condujiste la conversación. Es orientativa: revísala con criterio." />
             </Expander>
         </Border>
         </StackPanel>
+        </ScrollViewer>
 
         <!-- Chat -->
         <Border Grid.Row="2" Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderBrush}"
@@ -126,7 +129,7 @@
                 <TextBlock Text="Notas de la sesión" FontWeight="SemiBold" FontSize="11"
                            Foreground="{DynamicResource MutedBrush}" Margin="2,2,0,4" />
                 <TextBox Text="{Binding SessionNotes, UpdateSourceTrigger=PropertyChanged}"
-                         AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72" MaxHeight="140"
+                         AcceptsReturn="True" TextWrapping="Wrap" MinHeight="48" MaxHeight="120"
                          VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top"
                          Background="Transparent" Foreground="{DynamicResource TextBrush}" CaretBrush="{DynamicResource TextBrush}"
                          ToolTip="Notas libres sobre la sesión (p. ej. acuerdos, tareas). Se guardan con «Guardar cambios»." />

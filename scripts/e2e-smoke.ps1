@@ -110,14 +110,23 @@ function Invoke-Button($Window, [string]$Name) {
     $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
 }
 
-# Waits for a top-level window of the app whose title matches (wildcards allowed).
+# Waits for a window of the app whose title matches (wildcards allowed). UI Automation
+# exposes windows with an Owner (dialogs, the session chat) as children of their owner,
+# not of the desktop, so the app's top-level windows are searched too.
 function Wait-Window([string]$Title, [int]$Seconds = 20) {
     $deadline = (Get-Date).AddSeconds($Seconds)
-    $condition = New-Object System.Windows.Automation.PropertyCondition($UIA::ProcessIdProperty, $script:process.Id)
+    $ofProcess = New-Object System.Windows.Automation.PropertyCondition($UIA::ProcessIdProperty, $script:process.Id)
+    $isWindow = New-Object System.Windows.Automation.PropertyCondition($UIA::ControlTypeProperty, [System.Windows.Automation.ControlType]::Window)
     while ((Get-Date) -lt $deadline) {
-        foreach ($window in $UIA::RootElement.FindAll($Tree::Children, $condition)) {
-            if ($window.Current.Name -like $Title) {
-                return $window
+        foreach ($top in $UIA::RootElement.FindAll($Tree::Children, $ofProcess)) {
+            if ($top.Current.Name -like $Title) {
+                return $top
+            }
+
+            foreach ($window in $top.FindAll($Tree::Descendants, $isWindow)) {
+                if ($window.Current.Name -like $Title) {
+                    return $window
+                }
             }
         }
 
@@ -132,6 +141,9 @@ function Show-Front($Window) {
     if ($handle -ne [IntPtr]::Zero) {
         [E2E.Native]::SetForegroundWindow($handle) | Out-Null
     }
+
+    # Moves the mouse out of the way so no tooltip ends up in the screenshot.
+    [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point 0, 0
 
     Start-Sleep -Milliseconds 800
 }
@@ -244,6 +256,7 @@ try {
     $checks.Add("Ventana principal: «$($process.MainWindowTitle)»")
     [E2E.Native]::ShowWindow($process.MainWindowHandle, 3) | Out-Null   # SW_MAXIMIZE
     [E2E.Native]::SetForegroundWindow($process.MainWindowHandle) | Out-Null
+    [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point 0, 0
     Start-Sleep -Seconds 3
 
     foreach ($name in 'Iniciar', 'Historial', 'Configuración') {
