@@ -33,6 +33,58 @@ public partial class MainWindow : Window
         viewModel.SessionImported += OpenImportedSession;
         viewModel.SessionChanged += UpdateTaskbarState;
         viewModel.ChooseEngine = ChooseEngine;
+        RestoreWindowState();
+    }
+
+    /// <summary>Restores the saved size, position and history panel; ignores positions off every screen.</summary>
+    private void RestoreWindowState()
+    {
+        if (_settings is null)
+        {
+            return;
+        }
+
+        SetHistoryOpen(_settings.HistoryOpen, persist: false);
+        if (_settings.MainWindow is not { } placement)
+        {
+            return;
+        }
+
+        var screen = new Rect(SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenTop,
+                              SystemParameters.VirtualScreenWidth, SystemParameters.VirtualScreenHeight);
+        var bounds = new Rect(placement.Left, placement.Top, Math.Max(placement.Width, MinWidth), Math.Max(placement.Height, MinHeight));
+        if (!screen.IntersectsWith(bounds))
+        {
+            return; // The monitor it was on is gone: keep the default centred window.
+        }
+
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        Left = bounds.Left;
+        Top = bounds.Top;
+        Width = bounds.Width;
+        Height = bounds.Height;
+        if (placement.Maximized)
+        {
+            WindowState = WindowState.Maximized;
+        }
+    }
+
+    private void SaveWindowState()
+    {
+        if (_settings is null)
+        {
+            return;
+        }
+
+        var bounds = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
+        if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0)
+        {
+            return;
+        }
+
+        _settings.MainWindow = new Services.WindowPlacement(
+            bounds.Left, bounds.Top, bounds.Width, bounds.Height, WindowState == WindowState.Maximized);
+        _settings.Save();
     }
 
     /// <summary>Muestra el diálogo «¿Transcribir? ¿Con qué motor?». Null = no transcribir ahora.</summary>
@@ -49,17 +101,48 @@ public partial class MainWindow : Window
         return dialog.ShowDialog() == true ? dialog.SelectedEngine : null;
     }
 
-    private void Settings_Click(object sender, RoutedEventArgs e) =>
-        new SettingsWindow(ViewModel, _store, _settings, _backup) { Owner = this }.ShowDialog();
+    private SettingsWindow? _settingsWindow;
+
+    private void Settings_Click(object sender, RoutedEventArgs e) => OpenSettings();
+
+    /// <summary>
+    /// Opens Settings without blocking this window, so Pause/Stop stay usable while recording.
+    /// Only one instance: a second request brings the open one to the front.
+    /// </summary>
+    internal void OpenSettings()
+    {
+        if (_settingsWindow is not null)
+        {
+            _settingsWindow.Activate();
+            return;
+        }
+
+        _settingsWindow = new SettingsWindow(ViewModel, _store, _settings, _backup) { Owner = this };
+        _settingsWindow.Closed += (_, _) =>
+        {
+            _settingsWindow = null;
+            ViewModel.RefreshConfigSummary(); // The default engine may have changed.
+        };
+        _settingsWindow.Show();
+    }
 
     private void HistoryToggle_Click(object sender, RoutedEventArgs e) => ToggleHistory();
 
     /// <summary>Shows or hides the history side panel; the main screen stays focused on recording.</summary>
-    private void ToggleHistory()
+    private void ToggleHistory() => SetHistoryOpen(HistoryPanel.Visibility != Visibility.Visible);
+
+    /// <summary>Opens the history panel (from the tray menu).</summary>
+    internal void ShowHistory() => SetHistoryOpen(true);
+
+    private void SetHistoryOpen(bool open, bool persist = true)
     {
-        var open = HistoryPanel.Visibility != Visibility.Visible;
         HistoryPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
         HistoryButton.Content = open ? "Ocultar historial" : "Historial";
+        if (persist && _settings is not null && _settings.HistoryOpen != open)
+        {
+            _settings.HistoryOpen = open;
+            _settings.Save();
+        }
     }
 
     private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
@@ -184,6 +267,7 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(CancelEventArgs e)
     {
+        SaveWindowState();
         if (!_exitRequested)
         {
             e.Cancel = true;

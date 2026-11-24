@@ -154,6 +154,7 @@ public sealed class MainViewModel : ViewModelBase
             if (Set(ref _selectedLanguageCode, value))
             {
                 PersistSettings();
+                RefreshConfigSummary();
             }
         }
     }
@@ -182,6 +183,7 @@ public sealed class MainViewModel : ViewModelBase
             if (Set(ref _selectedMicrophone, value))
             {
                 PersistSettings();
+                RefreshConfigSummary();
             }
         }
     }
@@ -383,7 +385,54 @@ public sealed class MainViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(CanDownloadModel));
         OnPropertyChanged(nameof(DownloadButtonText));
+        RefreshConfigSummary();
         CommandManager.InvalidateRequerySuggested();
+    }
+
+    /// <summary>
+    /// What is missing to record and transcribe locally, shown on the main screen now that
+    /// the device and model live in Settings. Null when everything is ready.
+    /// </summary>
+    public string? SetupHint
+    {
+        get
+        {
+            if (MicrophoneOptions.Count == 0)
+            {
+                return "No se encontró ningún micrófono: conecta uno y elígelo en Configuración.";
+            }
+
+            // With OpenAI as the default engine the local model is optional: no warning.
+            var usesWhisper = _settings?.DefaultEngine != TranscriptionEngineKind.OpenAi;
+            if (usesWhisper && SelectedModel is not null && !_models.IsAvailable(SelectedModel))
+            {
+                return $"Para transcribir con Whisper en tu equipo falta descargar el modelo «{SelectedModel.DisplayName}». Puedes grabar igualmente.";
+            }
+
+            return null;
+        }
+    }
+
+    public bool HasSetupHint => SetupHint is not null;
+
+    /// <summary>Active microphone, model, language and default engine, e.g. "Micrófono · Base (Q5) · Español · Whisper".</summary>
+    public string ConfigSummary
+    {
+        get
+        {
+            var microphone = SelectedMicrophone?.Name ?? "Sin micrófono";
+            var language = Languages.FirstOrDefault(l => l.Code == SelectedLanguageCode)?.Name ?? SelectedLanguageCode;
+            var engine = _settings?.DefaultEngine == TranscriptionEngineKind.OpenAi ? "OpenAI" : "Whisper";
+            return $"{microphone} · {SelectedModel?.DisplayName} · {language} · {engine}";
+        }
+    }
+
+    /// <summary>Refreshes the summary and the setup hint (e.g. after closing a settings window).</summary>
+    public void RefreshConfigSummary()
+    {
+        OnPropertyChanged(nameof(ConfigSummary));
+        OnPropertyChanged(nameof(SetupHint));
+        OnPropertyChanged(nameof(HasSetupHint));
     }
 
     public bool HasUnsavedLiveSession => State is SessionState.Recording or SessionState.Paused;
@@ -402,6 +451,7 @@ public sealed class MainViewModel : ViewModelBase
                               ?? MicrophoneOptions.FirstOrDefault(d => d.Name.Contains("por defecto", StringComparison.OrdinalIgnoreCase))
                               ?? MicrophoneOptions.FirstOrDefault();
         OnPropertyChanged(nameof(SelectedMicrophone));
+        RefreshConfigSummary();
     }
 
     public void LoadHistory(string? search)

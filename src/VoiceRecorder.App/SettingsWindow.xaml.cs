@@ -34,6 +34,7 @@ public partial class SettingsWindow : Window
         if (_settings is not null)
         {
             new TranscriptionSettingsWindow(_settings) { Owner = this }.ShowDialog();
+            _viewModel.RefreshConfigSummary(); // The default engine may have changed.
         }
     }
 

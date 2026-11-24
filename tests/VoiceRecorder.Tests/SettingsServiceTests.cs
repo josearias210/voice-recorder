@@ -35,6 +35,22 @@ public class SettingsServiceTests : IDisposable
     }
 
     [Fact]
+    public void Save_Y_Load_Conserva_El_Historial_Y_La_Ventana()
+    {
+        new SettingsService(_dataDir)
+        {
+            HistoryOpen = true,
+            MainWindow = new WindowPlacement(120, 80, 1300, 820, Maximized: true),
+        }.Save();
+
+        var restarted = new SettingsService(_dataDir);
+        restarted.Load();
+
+        Assert.True(restarted.HistoryOpen);
+        Assert.Equal(new WindowPlacement(120, 80, 1300, 820, true), restarted.MainWindow);
+    }
+
+    [Fact]
     public void Sin_Archivo_Los_Valores_Son_Nulos()
     {
         var service = new SettingsService(_dataDir);

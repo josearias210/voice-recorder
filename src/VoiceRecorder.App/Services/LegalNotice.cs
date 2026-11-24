@@ -10,7 +10,7 @@ namespace VoiceRecorder.App.Services;
 public static class LegalNotice
 {
     /// <summary>Versión del texto del aviso. Súbela cuando cambien DISCLAIMER.md o PRIVACY.md de forma relevante.</summary>
-    public const string Version = "2026-11-23";
+    public const string Version = "2026-11-24";
 
     public const string Title = "Voice Recorder · Aviso legal";
 

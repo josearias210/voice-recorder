@@ -154,6 +154,8 @@ public partial class App : System.Windows.Application
         menu.Items.Add(new WinForms.ToolStripMenuItem($"Voice Recorder v{AppInfo.Version}") { Enabled = false });
         menu.Items.Add(new WinForms.ToolStripSeparator());
         menu.Items.Add("Mostrar ventana", null, (_, _) => ShowMainWindow());
+        menu.Items.Add("Historial", null, (_, _) => ShowMainWindow(window => window.ShowHistory()));
+        menu.Items.Add("Configuración", null, (_, _) => ShowMainWindow(window => window.OpenSettings()));
 
         menu.Items.Add(new WinForms.ToolStripSeparator());
         _menuItemStart = (WinForms.ToolStripMenuItem)menu.Items.Add("▶ Iniciar", null, (_, _) => DispatcherInvoke(() => viewModel.StartCommand.Execute(null)));
@@ -176,16 +178,24 @@ public partial class App : System.Windows.Application
         _trayIcon.DoubleClick += (_, _) => ShowMainWindow();
     }
 
-    private static void ShowMainWindow()
+    /// <summary>Brings the main window to the front and, optionally, runs an action on it (open history, settings).</summary>
+    private static void ShowMainWindow(Action<MainWindow>? then = null)
     {
         DispatcherInvoke(() =>
         {
-            _mainWindow?.Show();
-            _mainWindow?.Activate();
-            if (_mainWindow is { WindowState: WindowState.Minimized } window)
+            if (_mainWindow is not { } window)
+            {
+                return;
+            }
+
+            window.Show();
+            window.Activate();
+            if (window.WindowState == WindowState.Minimized)
             {
                 window.WindowState = WindowState.Normal;
             }
+
+            then?.Invoke(window);
         });
     }
 
