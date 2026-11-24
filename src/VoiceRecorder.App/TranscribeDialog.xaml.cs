@@ -29,7 +29,7 @@ public partial class TranscribeDialog : Window
             ? string.Empty
             : "Para usar OpenAI, guarda tu clave de la API en Configuración (⚙) › «Transcripción…».";
 
-        var useOpenAi = openAiReady && settings?.DefaultEngine == TranscriptionEngineKind.OpenAi;
+        var useOpenAi = settings is { HasOpenAiKey: true, DefaultEngine: TranscriptionEngineKind.OpenAi };
         OpenAiOption.IsChecked = useOpenAi;
         WhisperOption.IsChecked = !useOpenAi;
     }
