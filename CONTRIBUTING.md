@@ -36,7 +36,7 @@ Voice Recorder es una herramienta para que **un participante transcriba su propi
 
 - Modos ocultos, sin ventana o sin icono en la bandeja, o que escondan el estado de grabación.
 - Grabación que empiece sola, en segundo plano o al arrancar Windows sin una acción explícita del usuario.
-- Envío, subida o sincronización de grabaciones o transcripciones a servidores o a terceros.
+- Envío, subida o sincronización **automática** de grabaciones o transcripciones a servidores o a terceros. Las salidas permitidas son siempre manuales y las elige el usuario en cada caso: transcribir con OpenAI (con su propia clave) y el backup a su propia cuenta de Azure. Cualquier salida nueva debe reflejarse en PRIVACY, DISCLAIMER, SECURITY y README.
 - Captura de dispositivos, cuentas o comunicaciones en las que el usuario no participa.
 
 Las issues que pidan ayuda para un uso no permitido (grabar a alguien sin que lo sepa, vigilar a otra persona…) se cerrarán sin respuesta técnica.
@@ -62,7 +62,7 @@ Las issues que pidan ayuda para un uso no permitido (grabar a alguien sin que lo
 
 | Workflow | Cuándo | Qué hace |
 |----------|--------|----------|
-| `CI` | push y PR a `main` | Escaneo de secretos, build + tests completos en Windows, portable de prueba |
+| `CI` | push y PR a `main` | Escaneo de secretos, build + tests completos en Windows, portable de prueba y **prueba E2E de humo**: arranca el portable, comprueba que la ventana principal carga y adjunta una captura de pantalla al PR |
 | `Linux checks` | push y PR a `main` | Pruebas portables, formato, actionlint y build de la imagen Docker de desarrollo |
 | `CodeQL` | push, PR y semanal | Análisis de seguridad del código C# |
 | `Dependency review` | PR | Bloquea dependencias nuevas con vulnerabilidades conocidas |

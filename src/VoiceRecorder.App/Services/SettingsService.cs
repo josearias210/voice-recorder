@@ -2,6 +2,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using VoiceRecorder.Transcription;
 
 namespace VoiceRecorder.App.Services;
 
@@ -10,26 +11,31 @@ internal sealed record SettingsData(
     string? ModelFileName,
     string? LanguageCode,
     string? MicrophoneId,
-    bool RecordAudioFirst = false,
     string? AcceptedLegalNoticeVersion = null,
     bool BackupEnabled = false,
     string? BackupAccountName = null,
     string? BackupContainer = null,
-    string? BackupKeyProtected = null);
+    string? BackupKeyProtected = null,
+    TranscriptionEngineKind DefaultEngine = TranscriptionEngineKind.Whisper,
+    string? OpenAiModel = null,
+    string? OpenAiKeyProtected = null,
+    double? OpenAiUsdPerMinute = null);
 
 /// <summary>
 /// Preferencias de usuario persistidas en %LOCALAPPDATA%\VoiceRecorder\settings.json
-/// (modelo Whisper, idioma, micrófono, modo de grabación y respaldo externo).
-/// La clave del respaldo se guarda cifrada con DPAPI (solo la descifra el
-/// mismo usuario de Windows en este equipo).
+/// (modelo Whisper, idioma, micrófono, motor de transcripción y respaldo externo).
+/// Las claves (backup y OpenAI) se guardan cifradas con DPAPI: solo las
+/// descifra el mismo usuario de Windows en este equipo.
 /// </summary>
 public sealed class SettingsService
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
-    private static readonly byte[] KeyEntropy = Encoding.UTF8.GetBytes("VoiceRecorder.Backup.v1");
+    private static readonly byte[] BackupKeyEntropy = Encoding.UTF8.GetBytes("VoiceRecorder.Backup.v1");
+    private static readonly byte[] OpenAiKeyEntropy = Encoding.UTF8.GetBytes("VoiceRecorder.OpenAi.v1");
 
     private readonly string _filePath;
     private string? _backupKeyProtected;
+    private string? _openAiKeyProtected;
 
     public SettingsService(string? dataDir = null)
     {
@@ -45,12 +51,6 @@ public sealed class SettingsService
 
     public string? MicrophoneId { get; set; }
 
-    /// <summary>
-    /// true = grabar el audio a archivo y transcribir al detener (sin
-    /// transcripción en vivo); false = transcripción en vivo (por defecto).
-    /// </summary>
-    public bool RecordAudioFirst { get; set; }
-
     /// <summary>Versión del aviso legal (<see cref="LegalNotice.Version"/>) que el usuario aceptó.</summary>
     public string? AcceptedLegalNoticeVersion { get; set; }
 
@@ -63,35 +63,32 @@ public sealed class SettingsService
     /// <summary>Contenedor de blobs (por defecto "voice-recorder").</summary>
     public string? BackupContainer { get; set; }
 
+    /// <summary>Motor que se propone al transcribir (Whisper local por defecto).</summary>
+    public TranscriptionEngineKind DefaultEngine { get; set; } = TranscriptionEngineKind.Whisper;
+
+    /// <summary>Modelo de OpenAI (por defecto <see cref="OpenAiTranscriber.DefaultModel"/>).</summary>
+    public string? OpenAiModel { get; set; }
+
+    /// <summary>Precio de OpenAI para estimar costes (USD por minuto); null = precio de referencia.</summary>
+    public double? OpenAiUsdPerMinute { get; set; }
+
     /// <summary>Indica si hay una clave de respaldo guardada.</summary>
     public bool HasBackupKey => !string.IsNullOrEmpty(_backupKeyProtected);
 
+    /// <summary>Indica si hay una clave de OpenAI guardada.</summary>
+    public bool HasOpenAiKey => !string.IsNullOrEmpty(_openAiKeyProtected);
+
     /// <summary>Guarda (cifrada) la clave de la cuenta; null o vacío la borra.</summary>
-    public void SetBackupKey(string? key)
-    {
-        _backupKeyProtected = string.IsNullOrEmpty(key)
-            ? null
-            : Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(key), KeyEntropy, DataProtectionScope.CurrentUser));
-    }
+    public void SetBackupKey(string? key) => _backupKeyProtected = Protect(key, BackupKeyEntropy);
 
     /// <summary>Clave descifrada, o null si no hay o no se puede descifrar (otro usuario/equipo).</summary>
-    public string? GetBackupKey()
-    {
-        if (string.IsNullOrEmpty(_backupKeyProtected))
-        {
-            return null;
-        }
+    public string? GetBackupKey() => Unprotect(_backupKeyProtected, BackupKeyEntropy);
 
-        try
-        {
-            return Encoding.UTF8.GetString(
-                ProtectedData.Unprotect(Convert.FromBase64String(_backupKeyProtected), KeyEntropy, DataProtectionScope.CurrentUser));
-        }
-        catch (Exception ex) when (ex is CryptographicException or FormatException)
-        {
-            return null;
-        }
-    }
+    /// <summary>Guarda (cifrada) la clave de la API de OpenAI; null o vacío la borra.</summary>
+    public void SetOpenAiKey(string? key) => _openAiKeyProtected = Protect(key?.Trim(), OpenAiKeyEntropy);
+
+    /// <summary>Clave de OpenAI descifrada, o null si no hay o no se puede descifrar.</summary>
+    public string? GetOpenAiKey() => Unprotect(_openAiKeyProtected, OpenAiKeyEntropy);
 
     /// <summary>Carga las preferencias; si el archivo falta o está corrupto, quedan los valores por defecto.</summary>
     public void Load()
@@ -112,12 +109,15 @@ public sealed class SettingsService
             ModelFileName = data.ModelFileName;
             LanguageCode = data.LanguageCode;
             MicrophoneId = data.MicrophoneId;
-            RecordAudioFirst = data.RecordAudioFirst;
             AcceptedLegalNoticeVersion = data.AcceptedLegalNoticeVersion;
             BackupEnabled = data.BackupEnabled;
             BackupAccountName = data.BackupAccountName;
             BackupContainer = data.BackupContainer;
             _backupKeyProtected = data.BackupKeyProtected;
+            DefaultEngine = Enum.IsDefined(data.DefaultEngine) ? data.DefaultEngine : TranscriptionEngineKind.Whisper;
+            OpenAiModel = data.OpenAiModel;
+            _openAiKeyProtected = data.OpenAiKeyProtected;
+            OpenAiUsdPerMinute = data.OpenAiUsdPerMinute is > 0 ? data.OpenAiUsdPerMinute : null;
         }
         catch
         {
@@ -135,17 +135,43 @@ public sealed class SettingsService
                     ModelFileName,
                     LanguageCode,
                     MicrophoneId,
-                    RecordAudioFirst,
                     AcceptedLegalNoticeVersion,
                     BackupEnabled,
                     BackupAccountName,
                     BackupContainer,
-                    _backupKeyProtected),
+                    _backupKeyProtected,
+                    DefaultEngine,
+                    OpenAiModel,
+                    _openAiKeyProtected,
+                    OpenAiUsdPerMinute),
                 JsonOptions));
         }
         catch
         {
             // Persistencia fallida: no es un error fatal.
+        }
+    }
+
+    private static string? Protect(string? secret, byte[] entropy) =>
+        string.IsNullOrEmpty(secret)
+            ? null
+            : Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(secret), entropy, DataProtectionScope.CurrentUser));
+
+    private static string? Unprotect(string? protectedValue, byte[] entropy)
+    {
+        if (string.IsNullOrEmpty(protectedValue))
+        {
+            return null;
+        }
+
+        try
+        {
+            return Encoding.UTF8.GetString(
+                ProtectedData.Unprotect(Convert.FromBase64String(protectedValue), entropy, DataProtectionScope.CurrentUser));
+        }
+        catch (Exception ex) when (ex is CryptographicException or FormatException)
+        {
+            return null;
         }
     }
 }

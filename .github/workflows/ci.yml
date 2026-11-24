@@ -113,3 +113,100 @@ jobs:
           name: VoiceRecorder-portable-${{ github.sha }}
           path: publish/
           retention-days: 14
+
+  # Prueba E2E de humo: el portable recién compilado arranca, carga su
+  # ventana principal y se adjunta una captura de pantalla al PR.
+  e2e-smoke:
+    name: E2E · la app arranca (captura)
+    needs: build-test
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions:
+      # Escritura solo para publicar la captura (rama e2e-screenshots) y
+      # comentarla en el PR; en PR de forks o de Dependabot el token es de
+      # solo lectura y esos pasos se omiten.
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download portable build
+        uses: actions/download-artifact@v7
+        with:
+          name: VoiceRecorder-portable-${{ github.sha }}
+          path: publish
+
+      - name: Arrancar la app y capturar la pantalla
+        shell: pwsh
+        run: ./scripts/e2e-smoke.ps1 -AppPath publish/VoiceRecorder.exe -OutDir artifacts/e2e -AcceptLegalNotice
+
+      - name: Resumen del job
+        if: always() && hashFiles('artifacts/e2e/report.md') != ''
+        shell: pwsh
+        run: Get-Content artifacts/e2e/report.md | Add-Content $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-screenshot-${{ github.sha }}
+          path: artifacts/e2e/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Publicar la captura en el PR
+        if: >-
+          always() && github.event_name == 'pull_request'
+          && github.event.pull_request.head.repo.full_name == github.repository
+          && github.actor != 'dependabot[bot]'
+          && hashFiles('artifacts/e2e/app.png') != ''
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          $branch = 'e2e-screenshots'
+          $file = "pr-$env:PR_NUMBER/$env:HEAD_SHA.png"
+
+          # Las capturas se guardan en una rama aparte (sin historial del código)
+          # para poder enlazarlas como imagen en el comentario.
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch --depth 1 origin $branch 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            git worktree add shots FETCH_HEAD
+            Push-Location shots
+            git checkout -B $branch
+          }
+          else {
+            git worktree add --detach shots
+            Push-Location shots
+            git checkout --orphan $branch
+            git rm -rf --quiet .
+          }
+          New-Item -ItemType Directory -Force -Path (Split-Path $file) | Out-Null
+          Copy-Item ../artifacts/e2e/app.png $file
+          git add $file
+          git commit --quiet -m "E2E: captura de PR #$env:PR_NUMBER ($env:HEAD_SHA)"
+          git push --quiet origin "HEAD:$branch"
+          if ($LASTEXITCODE -ne 0) { throw 'No se pudo publicar la captura.' }
+          Pop-Location
+
+          $report = Get-Content artifacts/e2e/report.md -Raw
+          $marker = '<!-- e2e-smoke -->'
+          $image = "https://raw.githubusercontent.com/$env:REPO/$branch/$file"
+          $body = "$marker`n$report`n![Captura de Voice Recorder]($image)`n`nCommit $env:HEAD_SHA · [ejecución]($env:RUN_URL)"
+
+          # Un único comentario por PR, actualizado en cada ejecución.
+          $existing = gh api "repos/$env:REPO/issues/$env:PR_NUMBER/comments" --paginate --jq ".[] | select(.body | startswith(`"$marker`")) | .id" | Select-Object -First 1
+          $payload = @{ body = $body } | ConvertTo-Json
+          if ($existing) {
+            $payload | gh api -X PATCH "repos/$env:REPO/issues/comments/$existing" --input - | Out-Null
+          }
+          else {
+            $payload | gh api -X POST "repos/$env:REPO/issues/$env:PR_NUMBER/comments" --input - | Out-Null
+          }

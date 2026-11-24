@@ -42,6 +42,7 @@ public sealed class WhisperTranscriber : ITranscriptionEngine, IDisposable
     private WhisperProcessor? _processor;
     private string? _processorLanguage;
     private int _processorThreads;
+    private bool _processorAccurate;
 
     public WhisperTranscriber(string modelPath, string language = "es")
     {
@@ -61,18 +62,39 @@ public sealed class WhisperTranscriber : ITranscriptionEngine, IDisposable
     /// </summary>
     public static int ComputeThreads(int processorCount) => Math.Clamp(processorCount - 1, 3, 16);
 
-    /// <summary>
-    /// Hilos de inferencia en directo: deja dos núcleos libres (mín. 2, máx. 8)
-    /// para que la captura WASAPI, el VAD y la UI no pierdan audio mientras
-    /// Whisper trabaja. Más de 8 hilos apenas acelera whisper.cpp.
-    /// </summary>
-    public static int ComputeLiveThreads(int processorCount) => Math.Clamp(processorCount - 2, 2, 8);
-
     /// <summary>Idioma: "es", "en", ... o "auto" para detección.</summary>
     public string Language { get; set; } = "es";
 
     /// <summary>Hilos de inferencia; un cambio se aplica en la siguiente transcripción.</summary>
     public int Threads { get; set; }
+
+    /// <summary>Haz de la búsqueda en modo preciso (whisper.cpp usa 5 por defecto en la CLI).</summary>
+    public const int AccurateBeamSize = 5;
+
+    /// <summary>
+    /// Modo preciso (por defecto): búsqueda por haz en lugar de voraz y el
+    /// texto anterior como contexto de cada bloque. Desactivarlo da el modo
+    /// rápido, sin contexto. Un cambio se aplica en la siguiente transcripción.
+    /// </summary>
+    public bool Accurate { get; set; } = true;
+
+    /// <summary>
+    /// Olvida el contexto acumulado (texto ya transcrito) antes de empezar
+    /// otro archivo o canal, para que no arrastre frases de otra conversación.
+    /// </summary>
+    public async Task ResetContextAsync()
+    {
+        await _gate.WaitAsync();
+        try
+        {
+            _processor?.Dispose();
+            _processor = null;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
 
     public async Task<IReadOnlyList<TranscriptSegment>> TranscribeAsync(Utterance utterance, CancellationToken cancellationToken)
     {
@@ -87,7 +109,7 @@ public sealed class WhisperTranscriber : ITranscriptionEngine, IDisposable
         {
             var processor = GetProcessor();
             var results = new List<TranscriptSegment>();
-            var maxEnd = utterance.Start + TimeSpan.FromSeconds(utterance.DurationSeconds);
+            var maxEnd = utterance.ToSessionTime(TimeSpan.FromSeconds(utterance.DurationSeconds));
 
             await foreach (var segment in processor.ProcessAsync(utterance.Samples, cancellationToken))
             {
@@ -97,8 +119,8 @@ public sealed class WhisperTranscriber : ITranscriptionEngine, IDisposable
                     continue;
                 }
 
-                var start = utterance.Start + segment.Start;
-                var end = utterance.Start + segment.End;
+                var start = utterance.ToSessionTime(segment.Start);
+                var end = utterance.ToSessionTime(segment.End);
                 if (end > maxEnd)
                 {
                     end = maxEnd;
@@ -194,7 +216,10 @@ public sealed class WhisperTranscriber : ITranscriptionEngine, IDisposable
 
     private WhisperProcessor GetProcessor()
     {
-        if (_processor is not null && _processorLanguage == Language && _processorThreads == Threads)
+        if (_processor is not null
+            && _processorLanguage == Language
+            && _processorThreads == Threads
+            && _processorAccurate == Accurate)
         {
             return _processor;
         }
@@ -202,8 +227,20 @@ public sealed class WhisperTranscriber : ITranscriptionEngine, IDisposable
         _processor?.Dispose();
         var builder = _factory
             .CreateBuilder()
-            .WithThreads(Threads)
-            .WithNoContext();
+            .WithThreads(Threads);
+        if (Accurate)
+        {
+            // Sin WithNoContext: cada bloque recibe el texto anterior como
+            // contexto (nombres y términos se mantienen coherentes).
+            builder.WithBeamSearchSamplingStrategy(beam => beam.WithBeamSize(AccurateBeamSize));
+        }
+        else
+        {
+            // En directo, frases cortas e intercaladas de dos hablantes: el
+            // contexto mezclaría canales y favorece repeticiones.
+            builder.WithNoContext();
+        }
+
         // Nota: WithSuppressRegex se probó y descartó — en whisper.net 1.9.1
         // corrompe la decodificación (texto ilegible y ~70x más lento). El
         // filtrado de anotaciones se hace en CleanText tras decodificar.
@@ -227,6 +264,7 @@ public sealed class WhisperTranscriber : ITranscriptionEngine, IDisposable
         _processor = builder.Build();
         _processorLanguage = Language;
         _processorThreads = Threads;
+        _processorAccurate = Accurate;
         return _processor;
     }
 

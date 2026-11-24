@@ -28,6 +28,41 @@ public sealed class FileSessionStoreTests : IDisposable
     }
 
     [Fact]
+    public void ReplaceSegments_Sustituye_La_Transcripcion_Y_Conserva_Los_Metadatos()
+    {
+        var store = new FileSessionStore(_root);
+        var id = store.SaveSession("Llamada", new DateTime(2026, 11, 23, 10, 0, 0), TimeSpan.FromMinutes(5), "qa", "notas", []);
+
+        var replaced = store.ReplaceSegments(id,
+        [
+            new TranscriptSegment(Speaker.Them, TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(6), "después"),
+            new TranscriptSegment(Speaker.Me, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2), "antes"),
+        ]);
+
+        Assert.True(replaced);
+        var (session, segments) = new FileSessionStore(_root).GetSession(id)!.Value;
+        Assert.Equal("Llamada", session.Title);
+        Assert.Equal("notas", session.Notes);
+        Assert.Equal(["antes", "después"], segments.Select(s => s.Text));
+        Assert.False(store.ReplaceSegments(id + 100, []));
+    }
+
+    [Fact]
+    public void ReplaceSegments_Guarda_La_Ultima_Transcripcion_En_El_Historial()
+    {
+        var store = new FileSessionStore(_root);
+        var id = store.SaveSession("Llamada", new DateTime(2026, 11, 23, 10, 0, 0), TimeSpan.FromMinutes(5), "", "", []);
+        var run = new TranscriptionRun(new DateTime(2026, 11, 23, 10, 6, 0), "OpenAI", "gpt-transcribe", TimeSpan.FromSeconds(95), 240, 0.018, id, "Llamada");
+
+        store.ReplaceSegments(id, [new TranscriptSegment(Speaker.Me, TimeSpan.Zero, TimeSpan.FromSeconds(1), "hola")], run);
+        store.ReplaceSegments(id, [new TranscriptSegment(Speaker.Me, TimeSpan.Zero, TimeSpan.FromSeconds(1), "hola")]);
+
+        var summary = Assert.Single(new FileSessionStore(_root).ListSessions());
+        Assert.Equal(run, summary.LastTranscription); // Sin run nuevo se conserva el anterior.
+        Assert.Null(new FileSessionStore(_root).GetSession(id + 1));
+    }
+
+    [Fact]
     public void Roundtrip_Y_Persistencia_Entre_Instancias()
     {
         var segments = new List<TranscriptSegment>

@@ -182,6 +182,29 @@ public class FileTranscriberTests
     }
 
     [Fact]
+    public async Task TranscribeAsync_Une_Frases_Cercanas_En_Un_Solo_Bloque()
+    {
+        // Dos frases de ~640 ms separadas por ~1,3 s de silencio: el segmentador
+        // las corta por separado, pero Whisper las recibe juntas.
+        var probabilities = Enumerable.Repeat(0.9f, 20)
+            .Concat(Enumerable.Repeat(0.05f, 40))
+            .Concat(Enumerable.Repeat(0.9f, 20))
+            .Concat(Enumerable.Repeat(0.05f, 1))
+            .ToArray();
+        using var source = new FakeSampleSource(Audio(5));
+        var engine = new FakeFileEngine();
+        var transcriber = new FileTranscriber(engine, () => new FakeVad(probabilities), Speaker.Them);
+
+        var segments = await transcriber.TranscribeAsync(source, null, CancellationToken.None);
+
+        Assert.Equal(1, engine.Calls);
+        var segment = Assert.Single(segments);
+        Assert.Equal(Speaker.Them, segment.Speaker);
+        Assert.InRange(segment.Start.TotalSeconds, 0, 0.1);
+        Assert.InRange(segment.End.TotalSeconds, 2.5, 2.6); // fin real de la segunda frase (80 ventanas)
+    }
+
+    [Fact]
     public async Task TranscribeAsync_Propaga_La_Cancelacion()
     {
         using var source = new FakeSampleSource(Audio(60));
