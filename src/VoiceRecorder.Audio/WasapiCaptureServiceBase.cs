@@ -2,6 +2,7 @@
 // la API probada con hardware real hasta migrar y verificar la captura con WasapiRecorder.
 #pragma warning disable CS0618
 
+using System.Diagnostics;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
@@ -22,6 +23,7 @@ public abstract class WasapiCaptureServiceBase : IAudioCaptureService
 
     private readonly object _gate = new();
     private readonly MMDevice? _device;
+    private readonly Stopwatch _clock = new();
     private WasapiCapture? _capture;
     private BufferedWaveProvider? _sourceBuffer;
     private MonoSampleProvider? _monoPipeline;
@@ -33,6 +35,12 @@ public abstract class WasapiCaptureServiceBase : IAudioCaptureService
     protected WasapiCaptureServiceBase(MMDevice? device) => _device = device;
 
     public AudioSource Source { get; protected init; }
+
+    /// <summary>
+    /// Rellena con silencio los huecos en los que el dispositivo no entrega
+    /// audio (loopback cuando no suena nada), para que el canal siga el reloj real.
+    /// </summary>
+    protected bool FillSilenceGaps { get; init; }
 
     public bool IsCapturing => _capturing;
 
@@ -64,6 +72,7 @@ public abstract class WasapiCaptureServiceBase : IAudioCaptureService
             var resampler = new WdlResamplingSampleProvider(floatSource, AudioConstants.TargetSampleRate);
             _monoPipeline = new MonoSampleProvider(resampler);
             _totalSamplesEmitted = 0;
+            _clock.Restart();
             _capture.DataAvailable += OnDataAvailable;
             _capture.RecordingStopped += OnRecordingStopped;
             _capture.StartRecording();
@@ -135,6 +144,7 @@ public abstract class WasapiCaptureServiceBase : IAudioCaptureService
                 _pollTimer = null;
                 _capture = null;
                 _capturing = false;
+                _clock.Stop();
             }
 
             if (e.Exception is not null)
@@ -179,23 +189,56 @@ public abstract class WasapiCaptureServiceBase : IAudioCaptureService
 
                 var samples = new float[read];
                 Array.Copy(output, samples, read);
-                long timestampSamples;
-                lock (_gate)
-                {
-                    timestampSamples = _totalSamplesEmitted;
-                    _totalSamplesEmitted += read;
-                }
+                Emit(samples);
+            }
 
-                var chunk = new AudioChunk(
-                    Source,
-                    samples,
-                    TimeSpan.FromSeconds((double)timestampSamples / AudioConstants.TargetSampleRate));
-                AudioChunkReady?.Invoke(this, chunk);
+            if (FillSilenceGaps)
+            {
+                FillSilence();
             }
         }
         finally
         {
             Interlocked.Exchange(ref _draining, 0);
         }
+    }
+
+    /// <summary>
+    /// Con el buffer ya vacío, emite el silencio que falta hasta el reloj real
+    /// (el loopback no entrega nada mientras no suena ningún audio).
+    /// </summary>
+    private void FillSilence()
+    {
+        int missing;
+        lock (_gate)
+        {
+            if (_monoPipeline is null || !_capturing)
+            {
+                return;
+            }
+
+            missing = SilenceGap.SamplesToFill(_clock.Elapsed, _totalSamplesEmitted);
+        }
+
+        if (missing > 0)
+        {
+            Emit(new float[missing]);
+        }
+    }
+
+    private void Emit(float[] samples)
+    {
+        long timestampSamples;
+        lock (_gate)
+        {
+            timestampSamples = _totalSamplesEmitted;
+            _totalSamplesEmitted += samples.Length;
+        }
+
+        var chunk = new AudioChunk(
+            Source,
+            samples,
+            TimeSpan.FromSeconds((double)timestampSamples / AudioConstants.TargetSampleRate));
+        AudioChunkReady?.Invoke(this, chunk);
     }
 }

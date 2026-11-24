@@ -18,6 +18,8 @@ public sealed class LoopbackCaptureService : WasapiCaptureServiceBase
     public LoopbackCaptureService(MMDevice? device = null) : base(device)
     {
         Source = AudioSource.Loopback;
+        // Sin audio reproduciéndose, WASAPI loopback no entrega muestras.
+        FillSilenceGaps = true;
     }
 
     protected override WasapiCapture CreateCapture(MMDevice? device)
