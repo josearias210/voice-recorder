@@ -17,7 +17,7 @@
             <TextBlock Text="Motor por defecto" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,6" />
             <RadioButton x:Name="WhisperDefault" GroupName="Default" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4">
                 <TextBlock TextWrapping="Wrap">
-                    <Run Text="Whisper local" FontWeight="SemiBold" /><Run Text=" · gratis, todo en tu equipo. Modelo e idioma en la barra de ajustes." />
+                    <Run Text="Whisper local" FontWeight="SemiBold" /><Run Text=" · gratis, todo en tu equipo. Modelo e idioma en Configuración." />
                 </TextBlock>
             </RadioButton>
             <RadioButton x:Name="OpenAiDefault" GroupName="Default" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,12">

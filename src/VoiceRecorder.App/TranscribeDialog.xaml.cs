@@ -27,7 +27,7 @@ public partial class TranscribeDialog : Window
         OpenAiOption.IsEnabled = openAiReady;
         OpenAiHint.Text = openAiReady
             ? string.Empty
-            : "Para usar OpenAI, guarda tu clave de la API en «Transcripción…» (barra de ajustes).";
+            : "Para usar OpenAI, guarda tu clave de la API en Configuración (⚙) › «Transcripción…».";
 
         var useOpenAi = openAiReady && settings?.DefaultEngine == TranscriptionEngineKind.OpenAi;
         OpenAiOption.IsChecked = useOpenAi;

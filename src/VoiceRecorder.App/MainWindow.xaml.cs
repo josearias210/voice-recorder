@@ -49,19 +49,25 @@ public partial class MainWindow : Window
         return dialog.ShowDialog() == true ? dialog.SelectedEngine : null;
     }
 
-    private void Costs_Click(object sender, RoutedEventArgs e)
+    private void Settings_Click(object sender, RoutedEventArgs e) =>
+        new SettingsWindow(ViewModel, _store, _settings, _backup) { Owner = this }.ShowDialog();
+
+    private void HistoryToggle_Click(object sender, RoutedEventArgs e) => ToggleHistory();
+
+    /// <summary>Shows or hides the history side panel; the main screen stays focused on recording.</summary>
+    private void ToggleHistory()
     {
-        if (ViewModel.CostLog is { } log)
-        {
-            new CostsWindow(log) { Owner = this }.ShowDialog();
-        }
+        var open = HistoryPanel.Visibility != Visibility.Visible;
+        HistoryPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+        HistoryButton.Content = open ? "Ocultar historial" : "Historial";
     }
 
-    private void TranscriptionSettings_Click(object sender, RoutedEventArgs e)
+    private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
-        if (_settings is not null)
+        if (e.Key == Key.H && Keyboard.Modifiers == ModifierKeys.Control)
         {
-            new TranscriptionSettingsWindow(_settings) { Owner = this }.ShowDialog();
+            ToggleHistory();
+            e.Handled = true;
         }
     }
 
@@ -89,47 +95,6 @@ public partial class MainWindow : Window
     private void HistoryList_MouseDoubleClick(object sender, MouseButtonEventArgs e) => OpenSelectedSession();
 
     private void OpenSession_Click(object sender, RoutedEventArgs e) => OpenSelectedSession();
-
-    private void LegalNotice_Click(object sender, RoutedEventArgs e) =>
-        Services.LegalNotice.OpenDocument("DISCLAIMER.md");
-
-    private void Privacy_Click(object sender, RoutedEventArgs e) =>
-        Services.LegalNotice.OpenDocument("PRIVACY.md");
-
-    private void Backup_Click(object sender, RoutedEventArgs e)
-    {
-        if (_settings is null || _backup is null || _store is not ISessionFileStore fileStore)
-        {
-            return;
-        }
-
-        new BackupSettingsWindow(_settings, _backup, fileStore.RootDirectory) { Owner = this }.ShowDialog();
-    }
-
-    private void SyncBackup_Click(object sender, RoutedEventArgs e)
-    {
-        if (EnsureBackupConfigured())
-        {
-            new SyncWindow(_backup!) { Owner = this }.ShowDialog();
-        }
-    }
-
-    /// <summary>Si el backup no está configurado, abre su configuración. Devuelve si quedó activo.</summary>
-    private bool EnsureBackupConfigured()
-    {
-        if (_backup is null)
-        {
-            return false;
-        }
-
-        if (!_backup.IsActive)
-        {
-            ViewModel.StatusText = "Configura primero el backup externo (cuenta, contenedor y clave).";
-            Backup_Click(this, new RoutedEventArgs());
-        }
-
-        return _backup.IsActive;
-    }
 
     private void OpenSessionFolder_Click(object sender, RoutedEventArgs e)
     {
@@ -193,11 +158,6 @@ public partial class MainWindow : Window
 
         _store.DeleteSession(row.Id);
         ViewModel.LoadHistory(ViewModel.SearchText);
-    }
-
-    private void Model_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-    {
-        ViewModel?.RefreshModelAvailability();
     }
 
     private void Window_DragOver(object sender, System.Windows.DragEventArgs e)

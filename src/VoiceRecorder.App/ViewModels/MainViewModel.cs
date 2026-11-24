@@ -791,7 +791,7 @@ public sealed class MainViewModel : ViewModelBase
             var key = _settings?.GetOpenAiKey();
             if (string.IsNullOrEmpty(key))
             {
-                throw new InvalidOperationException("Falta la clave de OpenAI: configúrala en «Transcripción…».");
+                throw new InvalidOperationException("Falta la clave de OpenAI: configúrala en Configuración › «Transcripción…».");
             }
 
             return new OpenAiTranscriber(Http, key, _settings?.OpenAiModel, SelectedLanguageCode, usdPerMinute: _settings?.OpenAiUsdPerMinute);

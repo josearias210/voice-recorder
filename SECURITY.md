@@ -6,8 +6,8 @@ Solo la última versión publicada recibe correcciones de seguridad. Las instala
 
 | Versión | Soporte |
 |---------|---------|
-| 1.5.x   | ✅      |
-| < 1.5   | ❌      |
+| 1.6.x   | ✅      |
+| < 1.6   | ❌      |
 
 ## Reportar una vulnerabilidad
 
