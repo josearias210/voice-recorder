@@ -11,7 +11,43 @@ namespace VoiceRecorder.Transcription;
 public sealed record Utterance(Speaker Speaker, float[] Samples, TimeSpan Start, TimeSpan End)
 {
     public double DurationSeconds => (double)Samples.Length / AudioConstants.TargetSampleRate;
+
+    /// <summary>
+    /// Tramos de un bloque formado por varios enunciados (ver <see cref="UtteranceBatcher"/>),
+    /// ordenados por <see cref="UtterancePiece.Offset"/>. Nulo en un enunciado simple.
+    /// </summary>
+    public IReadOnlyList<UtterancePiece>? Pieces { get; init; }
+
+    /// <summary>
+    /// Convierte una posición dentro de <see cref="Samples"/> en tiempo de sesión,
+    /// respetando los huecos entre los enunciados de un bloque.
+    /// </summary>
+    public TimeSpan ToSessionTime(TimeSpan offset)
+    {
+        if (Pieces is not { Count: > 0 } pieces)
+        {
+            return Start + offset;
+        }
+
+        var piece = pieces[0];
+        foreach (var candidate in pieces)
+        {
+            if (candidate.Offset > offset)
+            {
+                break;
+            }
+
+            piece = candidate;
+        }
+
+        return piece.Start + (offset - piece.Offset);
+    }
 }
+
+/// <summary>Tramo de un bloque: dónde empieza dentro de sus muestras y a qué tiempo de sesión corresponde.</summary>
+/// <param name="Offset">Posición del tramo dentro de las muestras del bloque.</param>
+/// <param name="Start">Tiempo de sesión de esa posición.</param>
+public sealed record UtterancePiece(TimeSpan Offset, TimeSpan Start);
 
 /// <summary>
 /// Extrae enunciados de un canal aplicando el VAD por ventanas, con

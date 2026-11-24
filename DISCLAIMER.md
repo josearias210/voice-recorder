@@ -1,6 +1,6 @@
 # ⚠️ Aviso legal y exención de responsabilidad — Voice Recorder
 
-> Última actualización: 2026-11-20 · Aplica a partir de la versión 1.3.4
+> Última actualización: 2026-11-23 · Aplica a partir de la versión 1.4.0
 
 ## 0. Aceptación
 
@@ -39,7 +39,7 @@ Voice Recorder **no está concebida ni adaptada para interceptar comunicaciones 
 
 - **Siempre es visible**: tiene ventana e icono en la bandeja del sistema, y el estado de la sesión (grabando, en pausa, detenida) se muestra en ambos. No existe un modo oculto, invisible ni «sigiloso».
 - **Solo graba cuando tú lo pides**: la captura empieza al pulsar *Iniciar* y termina con *Pausar* o *Detener*. No graba en segundo plano por su cuenta ni al arrancar Windows.
-- **No envía nada por su cuenta**: no hay envío remoto automático, sincronización en segundo plano ni reenvío de grabaciones o transcripciones a terceros. La única salida de datos es el **backup externo opcional** (desactivado por defecto), que solo se ejecuta cuando tú pulsas *Sincronizar…* y copia a **tu propia** cuenta de Azure Blob Storage.
+- **No envía nada por su cuenta**: no hay envío remoto automático, sincronización en segundo plano ni reenvío de grabaciones o transcripciones a terceros. Solo salen datos en dos casos, siempre porque tú lo eliges en ese momento: (1) si eliges transcribir con **OpenAI**, los tramos con voz del audio se envían a la API de OpenAI con **tu propia** clave, y (2) el **backup externo opcional** (desactivado por defecto), que solo se ejecuta cuando pulsas *Sincronizar…* y copia a **tu propia** cuenta de Azure Blob Storage. Por defecto la transcripción se hace en tu equipo con Whisper.
 - **Solo captura el equipo en el que se ejecuta**: el micrófono y el audio que reproduce ese mismo PC. No accede a otros dispositivos, cuentas ni comunicaciones en las que el usuario no participa.
 
 Las propuestas o contribuciones que añadan funciones de ocultación, grabación encubierta, arranque silencioso o envío remoto de grabaciones **no se aceptarán**, y no se dará soporte a consultas cuyo fin sea un uso no permitido.
@@ -56,7 +56,9 @@ Esta aplicación es una herramienta técnica neutra; **no sustituye asesoramient
 
 ## 5. Datos de terceros
 
-Si transcribes llamadas en las que participan otras personas, las transcripciones (y el audio, si usas el modo «grabar primero») contienen datos personales de esas personas, que quedan **bajo tu control exclusivo en tu equipo**. A efectos de la normativa de protección de datos, **el responsable del tratamiento eres tú**, no el autor de la aplicación, que no recibe, almacena ni tiene acceso a ninguno de esos datos. Cómo los guardes, compartas o elimines es responsabilidad tuya.
+Si transcribes llamadas en las que participan otras personas, las transcripciones y el audio (que siempre se graba) contienen datos personales de esas personas, que quedan **bajo tu control exclusivo en tu equipo**. A efectos de la normativa de protección de datos, **el responsable del tratamiento eres tú**, no el autor de la aplicación, que no recibe, almacena ni tiene acceso a ninguno de esos datos. Cómo los guardes, compartas o elimines es responsabilidad tuya.
+
+Si eliges transcribir con **OpenAI**, el audio con voz de esas personas se envía a un tercero (OpenAI) que lo trata según sus propias condiciones y su [política de privacidad](https://openai.com/policies/privacy-policy/). Asegúrate de que el consentimiento o la base legal con la que grabas cubre también ese envío; si no, usa Whisper local.
 
 ## 6. Indemnidad
 
@@ -84,4 +86,4 @@ Para cuestiones sobre este aviso, abre una incidencia en el repositorio: <https:
 
 ## English (TL;DR)
 
-By downloading, installing or using Voice Recorder you **accept this notice** and the [privacy policy](PRIVACY.md); the app asks for this acceptance on first launch and cannot be used without it. The software is provided **AS IS and AS AVAILABLE, without warranty of any kind** (MIT license). To the maximum extent permitted by law, the author and contributors **assume no liability** for any damage, data loss or consequence arising from its use or misuse. **You are solely responsible** for how you use it and you are the data controller of any transcript you create: recording or transcribing conversations may require the consent of all parties depending on your jurisdiction (GDPR, all-party consent laws, etc.). Covert recording or surveillance is not a permitted use, and the app is deliberately designed against it: it is always visible (window and tray icon showing the session state), only records when you press Start, never sends recordings anywhere on its own (the only data output is an optional, off-by-default backup you trigger manually to your own Azure Blob Storage account), and features for hidden or covert recording will not be accepted. You agree to indemnify the author against claims arising from your use. Automatic transcription contains errors and must not be relied upon as an accurate record. This notice is not legal advice.
+By downloading, installing or using Voice Recorder you **accept this notice** and the [privacy policy](PRIVACY.md); the app asks for this acceptance on first launch and cannot be used without it. The software is provided **AS IS and AS AVAILABLE, without warranty of any kind** (MIT license). To the maximum extent permitted by law, the author and contributors **assume no liability** for any damage, data loss or consequence arising from its use or misuse. **You are solely responsible** for how you use it and you are the data controller of any transcript you create: recording or transcribing conversations may require the consent of all parties depending on your jurisdiction (GDPR, all-party consent laws, etc.). Covert recording or surveillance is not a permitted use, and the app is deliberately designed against it: it is always visible (window and tray icon showing the session state), only records when you press Start, never sends recordings anywhere on its own (data only leaves your PC when you choose it: transcribing with OpenAI sends the voice segments to the OpenAI API with your own key, and the optional, off-by-default backup you trigger manually copies to your own Azure Blob Storage account), and features for hidden or covert recording will not be accepted. You agree to indemnify the author against claims arising from your use. Automatic transcription contains errors and must not be relied upon as an accurate record. This notice is not legal advice.

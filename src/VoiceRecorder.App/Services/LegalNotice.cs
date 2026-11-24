@@ -10,7 +10,7 @@ namespace VoiceRecorder.App.Services;
 public static class LegalNotice
 {
     /// <summary>Versión del texto del aviso. Súbela cuando cambien DISCLAIMER.md o PRIVACY.md de forma relevante.</summary>
-    public const string Version = "2026-11-20";
+    public const string Version = "2026-11-23";
 
     public const string Title = "Voice Recorder · Aviso legal";
 
@@ -20,7 +20,7 @@ public static class LegalNotice
         "• TÚ ERES EL ÚNICO RESPONSABLE del uso que hagas de ella. Grabar o transcribir una conversación puede requerir el consentimiento de todas las personas que participan, según la ley de tu país (por ejemplo, el RGPD en la UE). Informa a los demás y obtén su consentimiento.\n\n" +
         "• NO está permitido usarla para grabar a escondidas, espiar ni vigilar a otras personas. La aplicación siempre es visible, solo graba cuando pulsas Iniciar y no envía nada a nadie.\n\n" +
         "• Las transcripciones automáticas contienen errores y no son un registro fiel de la conversación.\n\n" +
-        "• Todo se procesa en tu equipo: no hay telemetría y tus conversaciones no se envían a ningún servidor, salvo el backup externo opcional (desactivado por defecto), que solo se ejecuta cuando tú lo pides y envía a TU propia cuenta de Azure.\n\n" +
+        "• El audio de cada llamada se guarda en tu equipo y por defecto se transcribe también en tu equipo (Whisper). No hay telemetría. Solo salen datos cuando tú lo eliges: si transcribes con OpenAI, el audio con voz se envía a OpenAI con TU clave (de pago, sujeto a su política de privacidad); y el backup externo opcional envía a TU propia cuenta de Azure.\n\n" +
         "El texto completo está en DISCLAIMER.md y PRIVACY.md, en la carpeta de la aplicación y en el botón «Aviso legal».\n\n" +
         "¿Aceptas estas condiciones? Si eliges «No», la aplicación se cerrará.";
 

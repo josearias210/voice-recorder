@@ -86,9 +86,6 @@
                         Style="{StaticResource DangerButton}" />
                 <Button Content="Transcribir archivo…" Command="{Binding TranscribeFileCommand}" MinWidth="150"
                         Margin="22,0,0,0" Style="{StaticResource SecondaryButton}" />
-                <CheckBox Content="Grabar audio y transcribir al detener" IsChecked="{Binding RecordAudioFirst}"
-                          IsEnabled="{Binding CanStart}" Margin="22,0,0,0" VerticalAlignment="Center"
-                          ToolTip="Modo sin transcripción en vivo: guarda el audio (micrófono y llamada por separado) en WAV y lo transcribe al pulsar Detener. El arranque es instantáneo y el texto llega al final. El audio se conserva junto a la sesión en %LOCALAPPDATA%\VoiceRecorder\Sesiones." />
                 <Ellipse Style="{StaticResource LiveDot}" Margin="24,0,7,0" />
                 <TextBlock Text="{Binding StateText}" FontWeight="Bold" FontSize="14" VerticalAlignment="Center">
                     <TextBlock.Style>
@@ -117,7 +114,7 @@
                 <ColumnDefinition Width="360" />
             </Grid.ColumnDefinitions>
 
-            <!-- Transcripción en vivo -->
+            <!-- Transcripción -->
             <Border Grid.Column="0" Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1" CornerRadius="10" Padding="6">
                 <Grid>
@@ -145,21 +142,13 @@
                             <TextBlock FontSize="11" FontWeight="Bold">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
-                                        <Setter Property="Text" Value="EN VIVO" />
+                                        <Setter Property="Text" Value="GRABANDO AUDIO" />
                                         <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding State}" Value="Paused">
                                                 <Setter Property="Text" Value="EN PAUSA" />
                                                 <Setter Property="Foreground" Value="#F59E0B" />
                                             </DataTrigger>
-                                            <MultiDataTrigger>
-                                                <MultiDataTrigger.Conditions>
-                                                    <Condition Binding="{Binding RecordAudioFirst}" Value="True" />
-                                                    <Condition Binding="{Binding State}" Value="Recording" />
-                                                </MultiDataTrigger.Conditions>
-                                                <Setter Property="Text" Value="GRABANDO AUDIO" />
-                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
-                                            </MultiDataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </TextBlock.Style>
@@ -170,20 +159,19 @@
                         <ItemsControl ItemsSource="{Binding Segments}" ItemTemplate="{StaticResource ChatBubbleTemplate}"
                                       Margin="4,0,4,8" />
                     </ScrollViewer>
-                    <TextBlock Grid.Row="1" Text="Modo «grabar audio primero»: el texto aparecerá al pulsar Detener.&#x0a;El audio se guarda por canal (micrófono y llamada) y se conserva en disco."
+                    <TextBlock Grid.Row="1" Text="Grabando: el audio se guarda por canal (micrófono y llamada).&#x0a;Al pulsar Detener podrás elegir si transcribirlo y con qué motor."
                                TextWrapping="Wrap" TextAlignment="Center" Margin="24,0,24,0"
                                VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
                                 <Setter Property="Visibility" Value="Collapsed" />
                                 <Style.Triggers>
-                                    <MultiDataTrigger>
-                                        <MultiDataTrigger.Conditions>
-                                            <Condition Binding="{Binding RecordAudioFirst}" Value="True" />
-                                            <Condition Binding="{Binding State}" Value="Recording" />
-                                        </MultiDataTrigger.Conditions>
+                                    <DataTrigger Binding="{Binding State}" Value="Recording">
                                         <Setter Property="Visibility" Value="Visible" />
-                                    </MultiDataTrigger>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding State}" Value="Paused">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </TextBlock.Style>
@@ -229,21 +217,30 @@
                                                    TextTrimming="CharacterEllipsis">
                                             <Run Text="🏷 " /><Run Text="{Binding TagsText, Mode=OneWay}" />
                                         </TextBlock>
+                                        <TextBlock Text="{Binding TranscriptionText, Mode=OneWay}" FontSize="11" Margin="0,2,0,0"
+                                                   Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"
+                                                   ToolTip="Última transcripción: motor, tiempo que tardó y coste estimado"
+                                                   Visibility="{Binding HasTranscriptionInfo, Converter={StaticResource BoolToVis}}" />
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ListBox>
                     <StackPanel Grid.Row="3" Margin="0,10,0,0">
-                        <StackPanel Orientation="Horizontal">
+                        <WrapPanel Orientation="Horizontal">
                             <Button Content="Abrir chat" Style="{StaticResource SecondaryButton}" Click="OpenSession_Click" />
+                            <Button Content="Transcribir…" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="TranscribeSession_Click"
+                                    IsEnabled="{Binding CanStart}"
+                                    ToolTip="Transcribe (o vuelve a transcribir) el audio guardado de la sesión seleccionada con el motor que elijas" />
                             <Button Content="Eliminar" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="DeleteSession_Click" />
                             <Button Content="Carpeta" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="OpenSessionFolder_Click"
                                     ToolTip="Abre la carpeta de la sesión seleccionada (transcripción y audio), o la carpeta de sesiones" />
-                        </StackPanel>
+                        </WrapPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                             <Button Content="☁ Sincronizar…" Style="{StaticResource SecondaryButton}" Click="SyncBackup_Click"
                                     ToolTip="Compara lo que hay en local con el backup externo (falta subir, falta bajar, distinto, sincronizado) y sube o baja a mano" />
+                            <Button Content="💲 Costes…" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="Costs_Click"
+                                    ToolTip="Cuánto has gastado en transcripciones por mes, y el tiempo y coste de cada una" />
                         </StackPanel>
                     </StackPanel>
                 </Grid>
@@ -253,7 +250,7 @@
         <!-- Ajustes -->
         <Border Grid.Row="3" Background="{DynamicResource PanelBackground}" BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="1" CornerRadius="10" Padding="14,10" Margin="0,10,0,0">
-            <StackPanel Orientation="Horizontal">
+            <WrapPanel Orientation="Horizontal">
                 <TextBlock Text="Modelo:" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" />
                 <ComboBox ItemsSource="{Binding ModelOptions}" SelectedItem="{Binding SelectedModel}" DisplayMemberPath="DisplayName" IsEnabled="{Binding CanStart}"
                           MinWidth="170" Margin="8,0,4,0" VerticalContentAlignment="Center" SelectionChanged="Model_SelectionChanged" />
@@ -269,9 +266,11 @@
                 <TextBlock Text="Tema:" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="18,0,0,0" />
                 <ComboBox ItemsSource="{Binding ThemeOptions}" SelectedValue="{Binding SelectedTheme}" SelectedValuePath="Theme"
                           DisplayMemberPath="Name" MinWidth="110" Margin="8,0,0,0" VerticalContentAlignment="Center" />
+                <Button Content="Transcripción…" Click="TranscriptionSettings_Click" Style="{StaticResource SecondaryButton}"
+                        Margin="18,0,0,0" ToolTip="Motor de transcripción por defecto (Whisper local u OpenAI) y clave de la API de OpenAI" />
                 <Button Content="Backup externo…" Click="Backup_Click" Style="{StaticResource SecondaryButton}"
-                        Margin="18,0,0,0" ToolTip="Copia de las sesiones en Azure Blob Storage (con la misma estructura que en local)" />
-            </StackPanel>
+                        Margin="8,0,0,0" ToolTip="Copia de las sesiones en Azure Blob Storage (con la misma estructura que en local)" />
+            </WrapPanel>
         </Border>
 
         <!-- Estado -->

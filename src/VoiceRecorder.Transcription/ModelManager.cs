@@ -22,9 +22,12 @@ public sealed class ModelManager
     public static readonly IReadOnlyList<WhisperModelInfo> Catalog =
     [
         new("ggml-tiny-q5_1.bin", "Tiny · el más rápido", GgmlType.Tiny, QuantizationType.Q5_1),
-        new("ggml-base-q5_1.bin", "Base · recomendado", GgmlType.Base, QuantizationType.Q5_1),
+        new("ggml-base-q5_1.bin", "Base · rápido (por defecto)", GgmlType.Base, QuantizationType.Q5_1),
         new("ggml-base.bin", "Base · sin cuantizar", GgmlType.Base, QuantizationType.NoQuantization),
         new("ggml-small-q5_1.bin", "Small · más preciso", GgmlType.Small, QuantizationType.Q5_1),
+        // ~574 MB. Mucho más preciso en español; pensado para transcribir lo
+        // grabado al detener (en directo, en CPU, se quedaría atrás).
+        new("ggml-large-v3-turbo-q5_0.bin", "Large v3 Turbo · máxima precisión (574 MB)", GgmlType.LargeV3Turbo, QuantizationType.Q5_0),
     ];
 
     private readonly string _modelsDir;

@@ -222,6 +222,30 @@ public sealed class FileSessionStore : ISessionFileStore
         return finalPaths;
     }
 
+    public bool ReplaceSegments(long id, IReadOnlyList<TranscriptSegment> segments, TranscriptionRun? run = null)
+    {
+        ArgumentNullException.ThrowIfNull(segments);
+        lock (_gate)
+        {
+            if (!_folders.TryGetValue(id, out var folder) || TryRead(folder) is not { } data)
+            {
+                return false;
+            }
+
+            Write(folder, data with
+            {
+                Segments = segments
+                    .OrderBy(s => s.Start)
+                    .Select(s => new SegmentFile(s.Speaker, s.Start.TotalSeconds, s.End.TotalSeconds, s.Text))
+                    .ToList(),
+                LastTranscription = run ?? data.LastTranscription,
+            });
+        }
+
+        Changed?.Invoke();
+        return true;
+    }
+
     /// <summary>Ruta relativa (con '/') de la carpeta de una sesión dentro de la raíz.</summary>
     public static string BuildRelativeFolder(long id, DateTime startedAt) =>
         string.Create(
@@ -383,7 +407,8 @@ public sealed class FileSessionStore : ISessionFileStore
         TimeSpan.FromSeconds(data.ActiveDurationSeconds),
         data.Tags ?? string.Empty,
         data.Notes ?? string.Empty,
-        data.Segments?.Count ?? 0);
+        data.Segments?.Count ?? 0,
+        data.LastTranscription);
 
     private static SessionFile? TryRead(string folder)
     {
@@ -425,7 +450,8 @@ public sealed class FileSessionStore : ISessionFileStore
         double ActiveDurationSeconds,
         string? Tags,
         string? Notes,
-        List<SegmentFile>? Segments);
+        List<SegmentFile>? Segments,
+        TranscriptionRun? LastTranscription = null);
 
     /// <summary>Segmento de transcripción dentro de <c>session.json</c>.</summary>
     internal sealed record SegmentFile(Speaker Speaker, double Start, double End, string? Text);

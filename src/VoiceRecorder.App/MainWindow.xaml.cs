@@ -32,6 +32,48 @@ public partial class MainWindow : Window
         };
         viewModel.SessionImported += OpenImportedSession;
         viewModel.SessionChanged += UpdateTaskbarState;
+        viewModel.ChooseEngine = ChooseEngine;
+    }
+
+    /// <summary>Muestra el diálogo «¿Transcribir? ¿Con qué motor?». Null = no transcribir ahora.</summary>
+    private Transcription.TranscriptionEngineKind? ChooseEngine(TranscriptionPrompt prompt)
+    {
+        if (!IsVisible)
+        {
+            // Ventana oculta en la bandeja: se muestra para que el usuario vea la pregunta.
+            Show();
+            Activate();
+        }
+
+        var dialog = new TranscribeDialog(prompt, _settings, ViewModel.SelectedModel.DisplayName) { Owner = this };
+        return dialog.ShowDialog() == true ? dialog.SelectedEngine : null;
+    }
+
+    private void Costs_Click(object sender, RoutedEventArgs e)
+    {
+        if (ViewModel.CostLog is { } log)
+        {
+            new CostsWindow(log) { Owner = this }.ShowDialog();
+        }
+    }
+
+    private void TranscriptionSettings_Click(object sender, RoutedEventArgs e)
+    {
+        if (_settings is not null)
+        {
+            new TranscriptionSettingsWindow(_settings) { Owner = this }.ShowDialog();
+        }
+    }
+
+    private async void TranscribeSession_Click(object sender, RoutedEventArgs e)
+    {
+        if (HistoryList.SelectedItem is not SessionRowVm row)
+        {
+            ViewModel.StatusText = "Selecciona en el historial la sesión que quieres transcribir.";
+            return;
+        }
+
+        await ViewModel.RequestSessionTranscriptionAsync(row.Id);
     }
 
     public MainViewModel ViewModel { get; }
@@ -188,7 +230,7 @@ public partial class MainWindow : Window
             Hide();
             if (ViewModel.HasUnsavedLiveSession)
             {
-                App.ShowBalloon("Sigue grabando", "La transcripción continúa en segundo plano. Usa el icono de la bandeja para volver.");
+                App.ShowBalloon("Sigue grabando", "La grabación continúa en segundo plano. Usa el icono de la bandeja para volver.");
             }
 
             return;

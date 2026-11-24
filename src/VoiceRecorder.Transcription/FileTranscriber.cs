@@ -5,8 +5,9 @@ namespace VoiceRecorder.Transcription;
 
 /// <summary>
 /// Transcribe archivos completos (audio o vídeo): alimenta un
-/// <see cref="SpeechSegmenter"/> con el audio decodificado y transcribe cada
-/// enunciado conforme se detecta, con progreso [0..1].
+/// <see cref="SpeechSegmenter"/> con el audio decodificado, agrupa los
+/// enunciados en bloques (<see cref="UtteranceBatcher"/>) y transcribe cada
+/// bloque conforme se completa, con progreso [0..1].
 /// </summary>
 public sealed class FileTranscriber
 {
@@ -51,7 +52,16 @@ public sealed class FileTranscriber
 
         var segmenter = new SpeechSegmenter(_vadFactory(), _speaker) { Trace = Trace };
         var pending = new Queue<Utterance>();
-        segmenter.UtteranceCompleted += pending.Enqueue;
+        var batcher = new UtteranceBatcher();
+        // Las frases se agrupan en bloques de hasta 28 s antes de pasar a
+        // Whisper: con más audio y contexto comete muchos menos errores.
+        segmenter.UtteranceCompleted += utterance =>
+        {
+            if (batcher.Add(utterance) is { } block)
+            {
+                pending.Enqueue(block);
+            }
+        };
 
         var segments = new List<TranscriptSegment>();
         try
@@ -75,6 +85,11 @@ public sealed class FileTranscriber
 
             cancellationToken.ThrowIfCancellationRequested();
             segmenter.Flush();
+            if (batcher.Flush() is { } lastBlock)
+            {
+                pending.Enqueue(lastBlock);
+            }
+
             await DrainAsync(pending, segments, totalSeconds, transcribedUntil, ReportProgress, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             ReportProgress(1);

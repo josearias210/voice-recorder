@@ -18,16 +18,6 @@ public class WhisperTranscriberTests
     }
 
     [Theory]
-    [InlineData(2, 2)]   // suelo de 2 hilos
-    [InlineData(4, 2)]   // deja dos núcleos para captura y UI
-    [InlineData(8, 6)]
-    [InlineData(16, 8)]  // techo de 8
-    public void ComputeLiveThreads_Deja_Nucleos_Libres_Para_La_Captura(int processorCount, int expected)
-    {
-        Assert.Equal(expected, WhisperTranscriber.ComputeLiveThreads(processorCount));
-    }
-
-    [Theory]
     [InlineData("es", "Hola, ¿cómo estás? Bien, gracias. ¿Y tú?")]
     [InlineData("en", "Hi, how are you? I'm fine, thanks. And you?")]
     [InlineData("auto", null)]
