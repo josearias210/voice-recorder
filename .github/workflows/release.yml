@@ -6,8 +6,9 @@ on:
       - "v*"
   workflow_dispatch:
 
+# Solo lectura por defecto; el job que publica pide escritura para sí mismo.
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -17,50 +18,75 @@ jobs:
   # Barrera previa: no se publica nada si el historial que se va a etiquetar
   # contiene una clave, token o credencial.
   secrets-scan:
-    name: Secrets scan (gitleaks)
+    name: Secrets scan (gitleaks + TruffleHog)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Gitleaks (todo el historial)
         run: >-
-          docker run --rm -v "${{ github.workspace }}:/repo:ro"
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro"
           -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*'
-          zricethezav/gitleaks:v8.30.1 git /repo --redact --no-banner --exit-code 1
+          zricethezav/gitleaks:v8.30.1 git /repo --log-opts="--all" --redact --no-banner --exit-code 1
+
+      - name: TruffleHog (todo el historial)
+        run: >-
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro"
+          trufflesecurity/trufflehog:3.100.1 git file:///repo
+          --no-update --results=verified,unknown --fail
 
   release:
-    name: Velopack installer + scoop bucket + GitHub release
+    name: Velopack installer + GitHub release + scoop bucket
     needs: secrets-scan
     runs-on: windows-latest
+    timeout-minutes: 45
+    permissions:
+      # Crear el release y subir el manifiesto de scoop a main.
+      contents: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      # Conserva la credencial: «Update scoop bucket manifest» hace git push a main.
+      - name: Checkout # zizmor: ignore[artipacked]
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v6
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           dotnet-version: 10.0.x
 
+      # Los valores del contexto llegan como variables de entorno, nunca
+      # interpolados en el script, para evitar inyección de código.
       - name: Extract version from tag
-        id: version
         shell: pwsh
+        env:
+          TAG: ${{ github.ref_name }}
         run: |
-          $tag = "${{ github.ref_name }}"
-          if ($tag -notmatch '^v\d+\.\d+\.\d+$') {
+          if ($env:TAG -notmatch '^v\d+\.\d+\.\d+$') {
             throw "Publica desde una etiqueta de versión (por ejemplo, v1.2.0)."
           }
-          $version = $tag -replace '^v', ''
+          $version = $env:TAG -replace '^v', ''
           if (-not (Test-Path "docs/releases/$version.md")) {
             throw "Faltan las notas de versión docs/releases/$version.md."
           }
-          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          # Solo se publica código que ya está en main (revisado y con CI en verde).
+          git merge-base --is-ancestor $env:GITHUB_SHA origin/main
+          if ($LASTEXITCODE -ne 0) {
+            throw "La etiqueta $env:TAG apunta a un commit que no está en main."
+          }
+          $props = [xml](Get-Content Directory.Build.props)
+          $declared = $props.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          if ($declared -ne $version) {
+            throw "La etiqueta ($version) no coincide con <Version> de Directory.Build.props ($declared)."
+          }
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Build
         run: dotnet build VoiceRecorder.slnx -c Release -warnaserror --nologo
@@ -69,7 +95,8 @@ jobs:
         run: dotnet test --project tests/VoiceRecorder.Tests -c Release --no-build --output Detailed
 
       - name: Publish (self-contained win-x64)
-        run: dotnet publish src/VoiceRecorder.App/VoiceRecorder.App.csproj -c Release -r win-x64 --self-contained true -p:Version=${{ steps.version.outputs.version }} -o publish
+        shell: pwsh
+        run: dotnet publish src/VoiceRecorder.App/VoiceRecorder.App.csproj -c Release -r win-x64 --self-contained true "-p:Version=$env:VERSION" -o publish
 
       - name: Verify published files and version
         shell: pwsh
@@ -83,7 +110,7 @@ jobs:
             if (-not (Test-Path "publish/$file")) { throw "Falta $file en el paquete." }
           }
           $actual = (Get-Item 'publish/VoiceRecorder.exe').VersionInfo.ProductVersion.Split('+')[0]
-          if ($actual -ne '${{ steps.version.outputs.version }}') { throw "Versión incorrecta: $actual" }
+          if ($actual -ne $env:VERSION) { throw "Versión incorrecta: $actual" }
 
       # Segunda barrera: revisa los archivos que de verdad se van a distribuir
       # (configuración, .json, .md…), por si la compilación copiara un secreto
@@ -111,23 +138,24 @@ jobs:
       # se continúa y solo se genera el paquete completo.
       - name: Download previous release (for delta updates)
         continue-on-error: true
-        run: >
-          vpk download github
-          --repoUrl https://github.com/${{ github.repository }}
-          --token ${{ secrets.GITHUB_TOKEN }}
-          --outputDir releases
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: vpk download github --repoUrl $env:REPO_URL --token $env:GH_TOKEN --outputDir releases
 
       - name: Pack (installer + update packages)
-        run: >
+        shell: pwsh
+        run: >-
           vpk pack
           --runtime win-x64
           --packId VoiceRecorder
-          --packVersion ${{ steps.version.outputs.version }}
+          --packVersion $env:VERSION
           --packDir publish
           --mainExe VoiceRecorder.exe
           --packAuthors josearias210
           --icon src/VoiceRecorder.App/Assets/app.ico
-          --releaseNotes docs/releases/${{ steps.version.outputs.version }}.md
+          --releaseNotes "docs/releases/$env:VERSION.md"
           --outputDir releases
 
       - name: Verify packages and calculate checksums
@@ -135,7 +163,7 @@ jobs:
         run: |
           $required = @(
             'VoiceRecorder-win-Setup.exe', 'VoiceRecorder-win-Portable.zip',
-            'VoiceRecorder-${{ steps.version.outputs.version }}-full.nupkg', 'releases.win.json'
+            "VoiceRecorder-$env:VERSION-full.nupkg", 'releases.win.json'
           )
           foreach ($file in $required) {
             if (-not (Test-Path "releases/$file")) { throw "Falta el artefacto $file." }
@@ -143,7 +171,7 @@ jobs:
           # Los nupkg de versiones anteriores solo sirven para calcular el delta;
           # ya están publicados en su propio release y no se vuelven a subir.
           Get-ChildItem releases -Filter *.nupkg |
-            Where-Object { $_.Name -notlike 'VoiceRecorder-${{ steps.version.outputs.version }}-*' } |
+            Where-Object { $_.Name -notlike "VoiceRecorder-$env:VERSION-*" } |
             Remove-Item
           Get-ChildItem releases -File | ForEach-Object { Write-Host "$($_.Name) ($($_.Length) bytes)" }
           $checksums = Get-ChildItem releases -File | Sort-Object Name | ForEach-Object {
@@ -152,10 +180,24 @@ jobs:
           }
           $checksums | Set-Content releases/SHA256SUMS.txt -Encoding utf8
 
+      # El release se publica antes de tocar scoop: así el manifiesto nunca
+      # apunta a un ZIP que todavía no existe. Falla si el release ya existe.
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create $env:TAG (Get-ChildItem releases -File).FullName `
+            --verify-tag `
+            --title "Voice Recorder $env:VERSION" `
+            --notes-file "docs/releases/$env:VERSION.md"
+          if ($LASTEXITCODE -ne 0) { throw 'No se pudo publicar el release.' }
+
       - name: Update scoop bucket manifest
         shell: pwsh
         run: |
-          $version = "${{ steps.version.outputs.version }}"
+          $version = $env:VERSION
           $zip = "releases/VoiceRecorder-win-Portable.zip"
           $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
           $manifest = [ordered]@{
@@ -181,16 +223,3 @@ jobs:
           $stamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
           git commit -m "chore(scoop): release v$version [$stamp]" 2>$null
           git push origin HEAD:main
-
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          name: Voice Recorder ${{ steps.version.outputs.version }}
-          body_path: docs/releases/${{ steps.version.outputs.version }}.md
-          files: |
-            releases/*
-          overwrite_files: false
-          draft: false
-          prerelease: false
-
-
